@@ -1066,6 +1066,82 @@ rbtl_asm_html_event_kind:
     ret
 .size rbtl_asm_html_event_kind, .-rbtl_asm_html_event_kind
 
+.globl rbtl_asm_scan_html_event
+.type rbtl_asm_scan_html_event, @function
+rbtl_asm_scan_html_event:
+    xor eax, eax
+    cmp rdx, rsi
+    jae .Lscan_event_ret
+
+    mov qword ptr [rcx], rdx
+    mov qword ptr [r8], 0
+    cmp byte ptr [rdi + rdx], '<'
+    jne .Lscan_event_text
+
+    mov r9, rdx
+    inc r9
+.Lscan_event_skip_ws:
+    cmp r9, rsi
+    jae .Lscan_event_start
+    mov r10b, byte ptr [rdi + r9]
+    cmp r10b, ' '
+    je .Lscan_event_skip_one
+    cmp r10b, 10
+    je .Lscan_event_skip_one
+    jmp .Lscan_event_classify
+.Lscan_event_skip_one:
+    inc r9
+    jmp .Lscan_event_skip_ws
+.Lscan_event_classify:
+    cmp r10b, '/'
+    je .Lscan_event_end
+    cmp r10b, '!'
+    je .Lscan_event_bang
+.Lscan_event_start:
+    mov eax, 2
+    ret
+.Lscan_event_end:
+    mov eax, 3
+    ret
+.Lscan_event_bang:
+    mov eax, 4
+    ret
+
+.Lscan_event_text:
+    mov r9, rdx
+.Lscan_event_text_word_loop:
+    lea r10, [r9 + 8]
+    cmp r10, rsi
+    ja .Lscan_event_text_loop
+    mov rax, qword ptr [rdi + r9]
+    mov r10, 0x3c3c3c3c3c3c3c3c
+    xor rax, r10
+    mov r10, rax
+    mov r11, 0x0101010101010101
+    sub rax, r11
+    not r10
+    and rax, r10
+    mov r11, 0x8080808080808080
+    and rax, r11
+    jne .Lscan_event_text_loop
+    add r9, 8
+    jmp .Lscan_event_text_word_loop
+.Lscan_event_text_loop:
+    cmp r9, rsi
+    jae .Lscan_event_text_emit
+    cmp byte ptr [rdi + r9], '<'
+    je .Lscan_event_text_emit
+    inc r9
+    jmp .Lscan_event_text_loop
+.Lscan_event_text_emit:
+    mov r10, r9
+    sub r10, rdx
+    mov qword ptr [r8], r10
+    mov eax, 1
+.Lscan_event_ret:
+    ret
+.size rbtl_asm_scan_html_event, .-rbtl_asm_scan_html_event
+
 .globl rbtl_asm_next_ascii_token
 .type rbtl_asm_next_ascii_token, @function
 rbtl_asm_next_ascii_token:

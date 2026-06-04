@@ -506,10 +506,11 @@ impl<
 
     pub(crate) fn parse_single(&mut self) -> Result<Option<()>, ParseError> {
         loop {
-            match asm_core::html_event_kind(self.stream.data(), self.stream.idx) {
-                0 => return Ok(None),
-                1 => {
-                    let raw = Node::Raw(self.read_to(b'<').into());
+            match asm_core::scan_html_event(self.stream.data(), self.stream.idx) {
+                (0, _, _) => return Ok(None),
+                (1, start, len) => {
+                    self.stream.idx = start + len;
+                    let raw = Node::Raw(self.stream.slice(start, start + len).into());
                     let handle = self.register_tag(raw)?;
                     self.add_to_parent(handle)?;
                 }

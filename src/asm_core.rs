@@ -58,7 +58,13 @@ unsafe extern "C" {
     fn rbtl_asm_usize_min(left: usize, right: usize) -> usize;
     fn rbtl_asm_usize_add(left: usize, right: usize) -> usize;
     fn rbtl_asm_usize_sub_one(value: usize) -> usize;
-    fn rbtl_asm_html_event_kind(ptr: *const u8, len: usize, idx: usize) -> u32;
+    fn rbtl_asm_scan_html_event(
+        ptr: *const u8,
+        len: usize,
+        idx: usize,
+        out_start: *mut usize,
+        out_len: *mut usize,
+    ) -> u32;
     fn rbtl_asm_next_ascii_token(
         ptr: *const u8,
         len: usize,
@@ -290,8 +296,19 @@ pub(crate) fn usize_sub_one(value: usize) -> usize {
 }
 
 #[inline]
-pub(crate) fn html_event_kind(haystack: &[u8], idx: usize) -> u32 {
-    unsafe { rbtl_asm_html_event_kind(haystack.as_ptr(), haystack.len(), idx) }
+pub(crate) fn scan_html_event(haystack: &[u8], idx: usize) -> (u32, usize, usize) {
+    let mut start = 0;
+    let mut len = 0;
+    let kind = unsafe {
+        rbtl_asm_scan_html_event(
+            haystack.as_ptr(),
+            haystack.len(),
+            idx,
+            &mut start,
+            &mut len,
+        )
+    };
+    (kind, start, len)
 }
 
 #[inline]
