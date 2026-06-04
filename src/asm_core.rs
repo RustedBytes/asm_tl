@@ -38,7 +38,6 @@ unsafe extern "C" {
         needle: *const u8,
         needle_len: usize,
     ) -> u32;
-    fn rbtl_asm_is_ident(byte: u8) -> u32;
     fn rbtl_asm_count_ident(ptr: *const u8, len: usize) -> usize;
     fn rbtl_asm_is_quote(byte: u8) -> u32;
     fn rbtl_asm_find_comment_end(ptr: *const u8, len: usize) -> usize;
@@ -49,6 +48,10 @@ unsafe extern "C" {
     fn rbtl_asm_parser_is_tracking(flags: u8) -> u32;
     fn rbtl_asm_attr_key_kind(ptr: *const u8, len: usize) -> u32;
     fn rbtl_asm_len_fits_u32(len: usize) -> u32;
+    fn rbtl_asm_byte_at_eq(ptr: *const u8, len: usize, idx: usize, byte: u8) -> u32;
+    fn rbtl_asm_selector_token_kind(byte: u8) -> u32;
+    fn rbtl_asm_selector_attr_op_kind(byte: u8) -> u32;
+    fn rbtl_asm_selector_combinator_kind(byte: u8, has_whitespace: u32) -> u32;
 }
 
 #[inline]
@@ -170,11 +173,6 @@ pub(crate) fn contains_bytes(haystack: &[u8], needle: &[u8]) -> bool {
 }
 
 #[inline]
-pub(crate) fn is_ident(byte: u8) -> bool {
-    unsafe { rbtl_asm_is_ident(byte) != 0 }
-}
-
-#[inline]
 pub(crate) fn count_ident(haystack: &[u8]) -> usize {
     unsafe { rbtl_asm_count_ident(haystack.as_ptr(), haystack.len()) }
 }
@@ -223,4 +221,24 @@ pub(crate) fn attr_key_kind(key: &[u8]) -> u32 {
 #[inline]
 pub(crate) fn len_fits_u32(len: usize) -> bool {
     unsafe { rbtl_asm_len_fits_u32(len) != 0 }
+}
+
+#[inline]
+pub(crate) fn byte_at_eq(haystack: &[u8], idx: usize, byte: u8) -> bool {
+    unsafe { rbtl_asm_byte_at_eq(haystack.as_ptr(), haystack.len(), idx, byte) != 0 }
+}
+
+#[inline]
+pub(crate) fn selector_token_kind(byte: u8) -> u32 {
+    unsafe { rbtl_asm_selector_token_kind(byte) }
+}
+
+#[inline]
+pub(crate) fn selector_attr_op_kind(byte: u8) -> u32 {
+    unsafe { rbtl_asm_selector_attr_op_kind(byte) }
+}
+
+#[inline]
+pub(crate) fn selector_combinator_kind(byte: u8, has_whitespace: bool) -> u32 {
+    unsafe { rbtl_asm_selector_combinator_kind(byte, has_whitespace as u32) }
 }

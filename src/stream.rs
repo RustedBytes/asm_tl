@@ -28,12 +28,6 @@ impl<'a, T: Eq + Copy> Stream<'a, T> {
             None
         }
     }
-
-    /// Same as expect_and_skip, but returns a bool
-    #[inline]
-    pub fn expect_and_skip_cond(&mut self, expect: T) -> bool {
-        self.expect_and_skip(expect).is_some()
-    }
 }
 
 impl<'a, T> Stream<'a, T> {
@@ -63,12 +57,6 @@ impl<'a, T> Stream<'a, T> {
     #[inline]
     pub fn advance_by(&mut self, step: usize) {
         self.idx += step;
-    }
-
-    /// Returns the current element
-    #[inline]
-    pub fn current(&self) -> Option<&T> {
-        self.data.get(self.idx)
     }
 
     /// Checks whether the stream has reached the end

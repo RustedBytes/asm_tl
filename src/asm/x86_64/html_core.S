@@ -871,4 +871,108 @@ rbtl_asm_len_fits_u32:
     ret
 .size rbtl_asm_len_fits_u32, .-rbtl_asm_len_fits_u32
 
+.globl rbtl_asm_byte_at_eq
+.type rbtl_asm_byte_at_eq, @function
+rbtl_asm_byte_at_eq:
+    xor eax, eax
+    cmp rdx, rsi
+    jae .Lbyte_at_eq_ret
+    cmp byte ptr [rdi + rdx], cl
+    sete al
+.Lbyte_at_eq_ret:
+    ret
+.size rbtl_asm_byte_at_eq, .-rbtl_asm_byte_at_eq
+
+.globl rbtl_asm_selector_token_kind
+.type rbtl_asm_selector_token_kind, @function
+rbtl_asm_selector_token_kind:
+    cmp dil, '#'
+    je .Lselector_token_id
+    cmp dil, '.'
+    je .Lselector_token_class
+    cmp dil, '*'
+    je .Lselector_token_all
+    cmp dil, '['
+    je .Lselector_token_attr
+    call rbtl_asm_is_ident
+    test eax, eax
+    jne .Lselector_token_tag
+    xor eax, eax
+    ret
+.Lselector_token_id:
+    mov eax, 1
+    ret
+.Lselector_token_class:
+    mov eax, 2
+    ret
+.Lselector_token_all:
+    mov eax, 3
+    ret
+.Lselector_token_attr:
+    mov eax, 4
+    ret
+.Lselector_token_tag:
+    mov eax, 5
+    ret
+.size rbtl_asm_selector_token_kind, .-rbtl_asm_selector_token_kind
+
+.globl rbtl_asm_selector_attr_op_kind
+.type rbtl_asm_selector_attr_op_kind, @function
+rbtl_asm_selector_attr_op_kind:
+    cmp dil, ']'
+    je .Lselector_attr_close
+    cmp dil, '='
+    je .Lselector_attr_equal
+    cmp dil, '~'
+    je .Lselector_attr_tilde
+    cmp dil, '^'
+    je .Lselector_attr_caret
+    cmp dil, '$'
+    je .Lselector_attr_dollar
+    cmp dil, '*'
+    je .Lselector_attr_star
+    xor eax, eax
+    ret
+.Lselector_attr_close:
+    mov eax, 1
+    ret
+.Lselector_attr_equal:
+    mov eax, 2
+    ret
+.Lselector_attr_tilde:
+    mov eax, 3
+    ret
+.Lselector_attr_caret:
+    mov eax, 4
+    ret
+.Lselector_attr_dollar:
+    mov eax, 5
+    ret
+.Lselector_attr_star:
+    mov eax, 6
+    ret
+.size rbtl_asm_selector_attr_op_kind, .-rbtl_asm_selector_attr_op_kind
+
+.globl rbtl_asm_selector_combinator_kind
+.type rbtl_asm_selector_combinator_kind, @function
+rbtl_asm_selector_combinator_kind:
+    cmp dil, ','
+    je .Lselector_comb_or
+    cmp dil, '>'
+    je .Lselector_comb_parent
+    test esi, esi
+    jne .Lselector_comb_descendant
+    mov eax, 4
+    ret
+.Lselector_comb_or:
+    mov eax, 1
+    ret
+.Lselector_comb_parent:
+    mov eax, 2
+    ret
+.Lselector_comb_descendant:
+    mov eax, 3
+    ret
+.size rbtl_asm_selector_combinator_kind, .-rbtl_asm_selector_combinator_kind
+
 .section .note.GNU-stack,"",@progbits

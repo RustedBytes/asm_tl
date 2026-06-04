@@ -41,22 +41,22 @@ impl<'a> Parser<'a> {
             return Some(left);
         };
 
-        let combinator = match tok {
-            b',' => {
+        let combinator = match asm_core::selector_combinator_kind(tok, has_whitespaces) {
+            1 => {
                 self.stream.advance();
                 let right = self.selector()?;
                 Selector::Or(Box::new(left), Box::new(right))
             }
-            b'>' => {
+            2 => {
                 self.stream.advance();
                 let right = self.selector()?;
                 Selector::Parent(Box::new(left), Box::new(right))
             }
-            _ if has_whitespaces => {
+            3 => {
                 let right = self.selector()?;
                 Selector::Descendant(Box::new(left), Box::new(right))
             }
-            _ if !has_whitespaces => {
+            4 => {
                 let right = self.selector()?;
                 Selector::And(Box::new(left), Box::new(right))
             }
@@ -75,7 +75,9 @@ impl<'a> Parser<'a> {
         if self.stream.current_cpy().is_none() {
             return Ok(left);
         }
-        if has_whitespaces || matches!(self.stream.current_cpy(), Some(b',' | b'>')) {
+        let tok = self.stream.current_cpy().unwrap();
+        let combinator = asm_core::selector_combinator_kind(tok, has_whitespaces);
+        if combinator == 1 || combinator == 2 || combinator == 3 {
             return Err(ParseError::SelectorCapacityExceeded);
         }
         Err(ParseError::SelectorCapacityExceeded)
@@ -85,12 +87,19 @@ impl<'a> Parser<'a> {
         &mut self,
     ) -> Option<Selector<'a, MAX_SELECTOR_NODES>> {
         let attribute = self.read_identifier();
-        let ty = match self.stream.current_cpy() {
-            Some(b']') => {
+        let Some(op) = self
+            .stream
+            .current_cpy()
+            .map(asm_core::selector_attr_op_kind)
+        else {
+            return None;
+        };
+        let ty = match op {
+            1 => {
                 self.stream.advance();
                 Selector::Attribute(attribute)
             }
-            Some(b'=') => {
+            2 => {
                 self.stream.advance();
                 let quote = self.stream.current_cpy().filter(|&c| asm_core::is_quote(c));
                 if quote.is_some() {
@@ -104,7 +113,7 @@ impl<'a> Parser<'a> {
                 self.stream.expect_and_skip(b']')?;
                 Selector::AttributeValue(attribute, value)
             }
-            Some(c @ b'~' | c @ b'^' | c @ b'$' | c @ b'*') => {
+            c @ (3 | 4 | 5 | 6) => {
                 self.stream.advance();
                 self.stream.expect_and_skip(b'=')?;
                 let quote = self.stream.current_cpy().filter(|&c| asm_core::is_quote(c));
@@ -118,10 +127,10 @@ impl<'a> Parser<'a> {
                 }
                 self.stream.expect_and_skip(b']')?;
                 match c {
-                    b'~' => Selector::AttributeValueWhitespacedContains(attribute, value),
-                    b'^' => Selector::AttributeValueStartsWith(attribute, value),
-                    b'$' => Selector::AttributeValueEndsWith(attribute, value),
-                    b'*' => Selector::AttributeValueSubstring(attribute, value),
+                    3 => Selector::AttributeValueWhitespacedContains(attribute, value),
+                    4 => Selector::AttributeValueStartsWith(attribute, value),
+                    5 => Selector::AttributeValueEndsWith(attribute, value),
+                    6 => Selector::AttributeValueSubstring(attribute, value),
                     _ => unreachable!(),
                 }
             }
@@ -136,26 +145,26 @@ impl<'a> Parser<'a> {
         self.skip_whitespaces();
         let tok = self.stream.current_cpy()?;
 
-        let left = match tok {
-            b'#' => {
+        let left = match asm_core::selector_token_kind(tok) {
+            1 => {
                 self.stream.advance();
                 let id = self.read_identifier();
                 Selector::Id(id)
             }
-            b'.' => {
+            2 => {
                 self.stream.advance();
                 let class = self.read_identifier();
                 Selector::Class(class)
             }
-            b'*' => {
+            3 => {
                 self.stream.advance();
                 Selector::All
             }
-            b'[' => {
+            4 => {
                 self.stream.advance();
                 self.parse_attribute::<0>()?
             }
-            _ if asm_core::is_ident(tok) => {
+            5 => {
                 let tag = self.read_identifier();
                 Selector::Tag(tag)
             }
@@ -176,27 +185,27 @@ impl<'a> Parser<'a> {
             .current_cpy()
             .ok_or(ParseError::SelectorCapacityExceeded)?;
 
-        let left = match tok {
-            b'#' => {
+        let left = match asm_core::selector_token_kind(tok) {
+            1 => {
                 self.stream.advance();
                 let id = self.read_identifier();
                 Selector::Id(id)
             }
-            b'.' => {
+            2 => {
                 self.stream.advance();
                 let class = self.read_identifier();
                 Selector::Class(class)
             }
-            b'*' => {
+            3 => {
                 self.stream.advance();
                 Selector::All
             }
-            b'[' => {
+            4 => {
                 self.stream.advance();
                 self.parse_attribute::<MAX_SELECTOR_NODES>()
                     .ok_or(ParseError::SelectorCapacityExceeded)?
             }
-            _ if asm_core::is_ident(tok) => {
+            5 => {
                 let tag = self.read_identifier();
                 Selector::Tag(tag)
             }

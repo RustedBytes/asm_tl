@@ -241,7 +241,10 @@ impl<
         let name = self.read_ident()?;
         self.skip_whitespaces();
 
-        let has_value = self.stream.expect_and_skip_cond(b'=');
+        let has_value = asm_core::byte_at_eq(self.stream.data(), self.stream.idx, b'=');
+        if has_value {
+            self.stream.advance();
+        }
         if !has_value {
             return Some((name, None));
         }
@@ -333,7 +336,9 @@ impl<
 
         let closing_tag_name = self.read_to(b'>');
 
-        self.stream.expect_and_skip_cond(b'>');
+        if asm_core::byte_at_eq(self.stream.data(), self.stream.idx, b'>') {
+            self.stream.advance();
+        }
 
         let closing_tag_matches_parent = self
             .stack
@@ -474,11 +479,16 @@ impl<
                     return Ok(None);
                 };
 
-                let is_self_closing = self.stream.expect_and_skip_cond(b'/');
+                let is_self_closing =
+                    asm_core::byte_at_eq(self.stream.data(), self.stream.idx, b'/');
+                if is_self_closing {
+                    self.stream.advance();
+                }
 
-                if self.stream.expect_and_skip(b'>').is_none() {
+                if !asm_core::byte_at_eq(self.stream.data(), self.stream.idx, b'>') {
                     return Ok(None);
                 }
+                self.stream.advance();
 
                 let this = self.register_tag(Node::Tag(HTMLTag::new(
                     name.into(),
@@ -508,11 +518,11 @@ impl<
 
     pub(crate) fn parse_single(&mut self) -> Result<Option<()>, ParseError> {
         loop {
-            let Some(cur) = self.stream.current() else {
+            if self.stream.is_eof() {
                 return Ok(None);
-            };
+            }
 
-            if *cur == b'<' {
+            if asm_core::byte_at_eq(self.stream.data(), self.stream.idx, b'<') {
                 self.parse_tag()?;
             } else {
                 let raw = Node::Raw(self.read_to(b'<').into());
