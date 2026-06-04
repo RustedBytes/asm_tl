@@ -120,9 +120,10 @@ fn get_element_by_class_name_tracking() {
 
 #[test]
 fn html5() {
-    let err = parse("<!DOCTYPE html> hello", ParserOptions::default()).unwrap_err();
+    let dom = parse("<!DOCTYPE html> hello", ParserOptions::default()).unwrap();
 
-    assert_eq!(err, ParseError::UnsupportedAssemblySyntax);
+    assert_eq!(dom.version(), Some(HTMLVersion::HTML5));
+    assert_eq!(dom.children().len(), 1)
 }
 
 #[test]
@@ -841,7 +842,7 @@ mod assembly_milestone {
     #[test]
     fn rejects_unsupported_markup() {
         assert_eq!(
-            parse("<!DOCTYPE html>", ParserOptions::default()).unwrap_err(),
+            parse("<!wat>", ParserOptions::default()).unwrap_err(),
             ParseError::UnsupportedAssemblySyntax
         );
     }
@@ -873,9 +874,12 @@ fn nodes_order() {
 
 #[test]
 fn comment() {
+    let dom = parse("<!-- test -->", Default::default()).unwrap();
+    let nodes = dom.nodes();
+    assert_eq!(nodes.len(), 1);
     assert_eq!(
-        parse("<!-- test -->", Default::default()).unwrap_err(),
-        ParseError::UnsupportedAssemblySyntax
+        nodes[0].as_comment().unwrap().as_utf8_str(),
+        "<!-- test -->"
     );
 }
 

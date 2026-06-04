@@ -99,10 +99,59 @@ rbtl_asm_validate_subset:
     cmp rdx, rsi
     jae .Lvalidate_next
     cmp byte ptr [rdi + rdx], '!'
-    je .Lvalidate_unsupported
+    je .Lvalidate_bang
 .Lvalidate_next:
     inc rax
     jmp .Lvalidate_loop
+.Lvalidate_bang:
+    lea rdx, [rax + 2]
+    cmp rdx, rsi
+    jae .Lvalidate_unsupported
+
+    # Allow comments: <!-- ... -->
+    lea r8, [rax + 3]
+    cmp r8, rsi
+    jae .Lvalidate_doctype
+    cmp byte ptr [rdi + rdx], '-'
+    jne .Lvalidate_doctype
+    cmp byte ptr [rdi + rdx + 1], '-'
+    je .Lvalidate_next
+
+.Lvalidate_doctype:
+    # Allow <!doctype ...> case-insensitively.
+    lea r8, [rax + 9]
+    cmp r8, rsi
+    ja .Lvalidate_unsupported
+
+    mov r9b, byte ptr [rdi + rdx]
+    or r9b, 32
+    cmp r9b, 'd'
+    jne .Lvalidate_unsupported
+    mov r9b, byte ptr [rdi + rdx + 1]
+    or r9b, 32
+    cmp r9b, 'o'
+    jne .Lvalidate_unsupported
+    mov r9b, byte ptr [rdi + rdx + 2]
+    or r9b, 32
+    cmp r9b, 'c'
+    jne .Lvalidate_unsupported
+    mov r9b, byte ptr [rdi + rdx + 3]
+    or r9b, 32
+    cmp r9b, 't'
+    jne .Lvalidate_unsupported
+    mov r9b, byte ptr [rdi + rdx + 4]
+    or r9b, 32
+    cmp r9b, 'y'
+    jne .Lvalidate_unsupported
+    mov r9b, byte ptr [rdi + rdx + 5]
+    or r9b, 32
+    cmp r9b, 'p'
+    jne .Lvalidate_unsupported
+    mov r9b, byte ptr [rdi + rdx + 6]
+    or r9b, 32
+    cmp r9b, 'e'
+    jne .Lvalidate_unsupported
+    jmp .Lvalidate_next
 .Lvalidate_unsupported:
     mov eax, 1
     ret
