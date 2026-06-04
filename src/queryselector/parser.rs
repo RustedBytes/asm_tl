@@ -1,6 +1,6 @@
 #[cfg(not(feature = "std"))]
 use crate::ParseError;
-use crate::{asm_core, stream::Stream, util};
+use crate::{asm_core, stream::Stream};
 
 use super::Selector;
 
@@ -25,15 +25,8 @@ impl<'a> Parser<'a> {
 
     fn read_identifier(&mut self) -> &'a [u8] {
         let start = self.stream.idx;
-
-        while !self.stream.is_eof() {
-            let is_ident = self.stream.current().copied().is_some_and(util::is_ident);
-            if !is_ident {
-                break;
-            } else {
-                self.stream.advance();
-            }
-        }
+        let len = asm_core::count_ident(&self.stream.data()[start..]);
+        self.stream.advance_by(len);
 
         self.stream.slice(start, self.stream.idx)
     }
@@ -99,7 +92,10 @@ impl<'a> Parser<'a> {
             }
             Some(b'=') => {
                 self.stream.advance();
-                let quote = self.stream.expect_oneof_and_skip(b"\"'");
+                let quote = self.stream.current_cpy().filter(|&c| asm_core::is_quote(c));
+                if quote.is_some() {
+                    self.stream.advance();
+                }
                 let value = self.read_identifier();
                 if let Some(quote) = quote {
                     // Only require the given quote if the value starts with a quote
@@ -111,7 +107,10 @@ impl<'a> Parser<'a> {
             Some(c @ b'~' | c @ b'^' | c @ b'$' | c @ b'*') => {
                 self.stream.advance();
                 self.stream.expect_and_skip(b'=')?;
-                let quote = self.stream.expect_oneof_and_skip(b"\"'");
+                let quote = self.stream.current_cpy().filter(|&c| asm_core::is_quote(c));
+                if quote.is_some() {
+                    self.stream.advance();
+                }
                 let value = self.read_identifier();
                 if let Some(quote) = quote {
                     // Only require the given quote if the value starts with a quote
@@ -156,7 +155,7 @@ impl<'a> Parser<'a> {
                 self.stream.advance();
                 self.parse_attribute::<0>()?
             }
-            _ if util::is_ident(tok) => {
+            _ if asm_core::is_ident(tok) => {
                 let tag = self.read_identifier();
                 Selector::Tag(tag)
             }
@@ -197,7 +196,7 @@ impl<'a> Parser<'a> {
                 self.parse_attribute::<MAX_SELECTOR_NODES>()
                     .ok_or(ParseError::SelectorCapacityExceeded)?
             }
-            _ if util::is_ident(tok) => {
+            _ if asm_core::is_ident(tok) => {
                 let tag = self.read_identifier();
                 Selector::Tag(tag)
             }

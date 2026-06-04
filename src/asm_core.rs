@@ -38,6 +38,10 @@ unsafe extern "C" {
         needle: *const u8,
         needle_len: usize,
     ) -> u32;
+    fn rbtl_asm_is_ident(byte: u8) -> u32;
+    fn rbtl_asm_count_ident(ptr: *const u8, len: usize) -> usize;
+    fn rbtl_asm_is_quote(byte: u8) -> u32;
+    fn rbtl_asm_find_comment_end(ptr: *const u8, len: usize) -> usize;
 }
 
 #[inline]
@@ -156,4 +160,25 @@ pub(crate) fn contains_bytes(haystack: &[u8], needle: &[u8]) -> bool {
             needle.len(),
         ) != 0
     }
+}
+
+#[inline]
+pub(crate) fn is_ident(byte: u8) -> bool {
+    unsafe { rbtl_asm_is_ident(byte) != 0 }
+}
+
+#[inline]
+pub(crate) fn count_ident(haystack: &[u8]) -> usize {
+    unsafe { rbtl_asm_count_ident(haystack.as_ptr(), haystack.len()) }
+}
+
+#[inline]
+pub(crate) fn is_quote(byte: u8) -> bool {
+    unsafe { rbtl_asm_is_quote(byte) != 0 }
+}
+
+#[inline]
+pub(crate) fn find_comment_end(haystack: &[u8]) -> Option<usize> {
+    let idx = unsafe { rbtl_asm_find_comment_end(haystack.as_ptr(), haystack.len()) };
+    (idx <= haystack.len()).then_some(idx)
 }

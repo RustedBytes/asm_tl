@@ -12,11 +12,6 @@ use super::{Parser, handle::NodeHandle};
 
 const INLINED_ATTRIBUTES: usize = 8;
 const INLINED_SUBNODES: usize = 256;
-const HTML_VOID_ELEMENTS: [&str; 16] = [
-    "area", "base", "br", "col", "command", "embed", "hr", "img", "input", "keygen", "link",
-    "meta", "param", "source", "track", "wbr",
-];
-
 /// The type of map for "raw" attributes
 pub type RawAttributesMap<'a> = InlineHashMap<Bytes<'a>, Option<Bytes<'a>>, INLINED_ATTRIBUTES>;
 
@@ -322,7 +317,7 @@ impl<'a> HTMLTag<'a> {
         dest: &mut W,
     ) -> fmt::Result {
         let tag_name = self._name.try_as_utf8_str().unwrap_or("");
-        let is_void_element = HTML_VOID_ELEMENTS.contains(&tag_name);
+        let is_void_element = asm_core::is_void_tag(self._name.as_bytes());
 
         dest.write_char('<')?;
         dest.write_str(tag_name)?;

@@ -228,24 +228,10 @@ impl<
     }
 
     fn skip_comment_with_start(&mut self, start: usize) -> &'a [u8] {
-        while !self.stream.is_eof() {
-            let idx = self.stream.idx;
-
-            if self
-                .stream
-                .slice_len(idx, constants::COMMENT.len())
-                .eq(constants::COMMENT)
-            {
-                self.stream.advance_by(constants::COMMENT.len());
-
-                let is_end_of_comment = self.stream.expect_and_skip_cond(b'>');
-
-                if is_end_of_comment {
-                    return self.stream.slice(start, self.stream.idx);
-                }
-            }
-
-            self.stream.advance();
+        let offset = asm_core::find_comment_end(&self.stream.data()[self.stream.idx..]);
+        if let Some(offset) = offset {
+            self.stream.advance_by(offset);
+            return self.stream.slice(start, self.stream.idx);
         }
 
         &[]
@@ -262,11 +248,13 @@ impl<
 
         self.skip_whitespaces();
 
-        let value = if let Some(quote) = self.stream.expect_oneof_and_skip(b"\"'") {
-            self.read_to(quote)
-        } else {
-            self.read_to3([b' ', b'\n', b'>'])
-        };
+        let value =
+            if let Some(quote) = self.stream.current_cpy().filter(|&c| asm_core::is_quote(c)) {
+                self.stream.advance();
+                self.read_to(quote)
+            } else {
+                self.read_to3([b' ', b'\n', b'>'])
+            };
 
         Some((name, Some(value)))
     }

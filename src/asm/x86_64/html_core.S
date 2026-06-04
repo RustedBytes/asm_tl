@@ -306,7 +306,17 @@ rbtl_asm_is_void_tag:
     ret
 .Lvoid_len2:
     cmp byte ptr [rdi], 'b'
-    jne .Lvoid_no
+    je .Lvoid_br
+    cmp byte ptr [rdi], 'h'
+    je .Lvoid_hr
+    xor eax, eax
+    ret
+.Lvoid_br:
+    cmp byte ptr [rdi + 1], 'r'
+    sete al
+    movzx eax, al
+    ret
+.Lvoid_hr:
     cmp byte ptr [rdi + 1], 'r'
     sete al
     movzx eax, al
@@ -314,8 +324,6 @@ rbtl_asm_is_void_tag:
 .Lvoid_len3:
     cmp byte ptr [rdi], 'c'
     je .Lvoid_col
-    cmp byte ptr [rdi], 'h'
-    je .Lvoid_hr
     cmp byte ptr [rdi], 'i'
     je .Lvoid_img
     xor eax, eax
@@ -324,11 +332,6 @@ rbtl_asm_is_void_tag:
     cmp byte ptr [rdi + 1], 'o'
     jne .Lvoid_no
     cmp byte ptr [rdi + 2], 'l'
-    sete al
-    movzx eax, al
-    ret
-.Lvoid_hr:
-    cmp byte ptr [rdi + 1], 'r'
     sete al
     movzx eax, al
     ret
@@ -466,6 +469,8 @@ rbtl_asm_is_void_tag:
     movzx eax, al
     ret
 .Lvoid_len7:
+    cmp byte ptr [rdi], 'c'
+    je .Lvoid_command
     cmp byte ptr [rdi], 'k'
     jne .Lvoid_no
     cmp byte ptr [rdi + 1], 'e'
@@ -477,6 +482,21 @@ rbtl_asm_is_void_tag:
     cmp byte ptr [rdi + 4], 'e'
     jne .Lvoid_no
     cmp byte ptr [rdi + 5], 'n'
+    sete al
+    movzx eax, al
+    ret
+.Lvoid_command:
+    cmp byte ptr [rdi + 1], 'o'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 2], 'm'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 3], 'm'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 4], 'a'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 5], 'n'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 6], 'd'
     sete al
     movzx eax, al
     ret
@@ -646,5 +666,120 @@ rbtl_asm_contains_bytes:
     xor eax, eax
     ret
 .size rbtl_asm_contains_bytes, .-rbtl_asm_contains_bytes
+
+.globl rbtl_asm_is_ident
+.type rbtl_asm_is_ident, @function
+rbtl_asm_is_ident:
+    mov dl, dil
+    cmp dl, '0'
+    jb .Lis_ident_symbols
+    cmp dl, '9'
+    jbe .Lis_ident_yes
+    cmp dl, 'A'
+    jb .Lis_ident_symbols
+    cmp dl, 'Z'
+    jbe .Lis_ident_yes
+    cmp dl, 'a'
+    jb .Lis_ident_symbols
+    cmp dl, 'z'
+    jbe .Lis_ident_yes
+.Lis_ident_symbols:
+    cmp dl, '-'
+    je .Lis_ident_yes
+    cmp dl, '_'
+    je .Lis_ident_yes
+    cmp dl, '/'
+    je .Lis_ident_yes
+    cmp dl, ':'
+    je .Lis_ident_yes
+    cmp dl, '+'
+    je .Lis_ident_yes
+    xor eax, eax
+    ret
+.Lis_ident_yes:
+    mov eax, 1
+    ret
+.size rbtl_asm_is_ident, .-rbtl_asm_is_ident
+
+.globl rbtl_asm_count_ident
+.type rbtl_asm_count_ident, @function
+rbtl_asm_count_ident:
+    xor rax, rax
+.Lcount_ident_loop:
+    cmp rax, rsi
+    jae .Lcount_ident_ret
+    mov dl, byte ptr [rdi + rax]
+    cmp dl, '0'
+    jb .Lcount_ident_symbols
+    cmp dl, '9'
+    jbe .Lcount_ident_next
+    cmp dl, 'A'
+    jb .Lcount_ident_symbols
+    cmp dl, 'Z'
+    jbe .Lcount_ident_next
+    cmp dl, 'a'
+    jb .Lcount_ident_symbols
+    cmp dl, 'z'
+    jbe .Lcount_ident_next
+.Lcount_ident_symbols:
+    cmp dl, '-'
+    je .Lcount_ident_next
+    cmp dl, '_'
+    je .Lcount_ident_next
+    cmp dl, '/'
+    je .Lcount_ident_next
+    cmp dl, ':'
+    je .Lcount_ident_next
+    cmp dl, '+'
+    je .Lcount_ident_next
+    ret
+.Lcount_ident_next:
+    inc rax
+    jmp .Lcount_ident_loop
+.Lcount_ident_ret:
+    ret
+.size rbtl_asm_count_ident, .-rbtl_asm_count_ident
+
+.globl rbtl_asm_is_quote
+.type rbtl_asm_is_quote, @function
+rbtl_asm_is_quote:
+    xor eax, eax
+    cmp dil, '"'
+    je .Lis_quote_yes
+    cmp dil, 39
+    je .Lis_quote_yes
+    ret
+.Lis_quote_yes:
+    mov eax, 1
+    ret
+.size rbtl_asm_is_quote, .-rbtl_asm_is_quote
+
+.globl rbtl_asm_find_comment_end
+.type rbtl_asm_find_comment_end, @function
+rbtl_asm_find_comment_end:
+    cmp rsi, 3
+    jb .Lcomment_none
+    xor rax, rax
+    mov r8, rsi
+    sub r8, 3
+.Lcomment_loop:
+    cmp rax, r8
+    ja .Lcomment_none
+    cmp byte ptr [rdi + rax], '-'
+    jne .Lcomment_next
+    cmp byte ptr [rdi + rax + 1], '-'
+    jne .Lcomment_next
+    cmp byte ptr [rdi + rax + 2], '>'
+    jne .Lcomment_next
+    add rax, 3
+    ret
+.Lcomment_next:
+    inc rax
+    jmp .Lcomment_loop
+.Lcomment_none:
+    mov rax, rsi
+    inc rax
+    ret
+.size rbtl_asm_find_comment_end, .-rbtl_asm_find_comment_end
 
 .section .note.GNU-stack,"",@progbits

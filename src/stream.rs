@@ -29,19 +29,6 @@ impl<'a, T: Eq + Copy> Stream<'a, T> {
         }
     }
 
-    /// Increases internal index by 1 if any of the given elements match the current element
-    /// If it does match, the expected character is returned
-    pub fn expect_oneof_and_skip(&mut self, expect: &[T]) -> Option<T> {
-        let c = self.current_cpy()?;
-
-        if expect.contains(&c) {
-            self.advance();
-            return Some(c);
-        }
-
-        None
-    }
-
     /// Same as expect_and_skip, but returns a bool
     #[inline]
     pub fn expect_and_skip_cond(&mut self, expect: T) -> bool {
