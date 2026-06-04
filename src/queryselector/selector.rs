@@ -1,4 +1,4 @@
-use crate::Node;
+use crate::{Node, asm_core};
 
 /// A single query selector node
 #[derive(Debug, Clone)]
@@ -53,7 +53,9 @@ impl<'a, const MAX_SELECTOR_NODES: usize> Selector<'a, MAX_SELECTOR_NODES> {
     /// Checks if the given node matches this selector
     pub fn matches<'b>(&self, node: &Node<'b>) -> bool {
         match self {
-            Self::Tag(tag) => node.as_tag().is_some_and(|t| t._name.as_bytes().eq(*tag)),
+            Self::Tag(tag) => node
+                .as_tag()
+                .is_some_and(|t| asm_core::bytes_eq(t._name.as_bytes(), tag)),
             Self::Id(id) => node
                 .as_tag()
                 .is_some_and(|t| t._attributes.id == Some((*id).into())),

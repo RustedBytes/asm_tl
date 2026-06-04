@@ -305,6 +305,14 @@ mod simd {
     }
 
     #[test]
+    fn is_closing_test() {
+        assert!(crate::simd::is_closing(b'/'));
+        assert!(crate::simd::is_closing(b'>'));
+        assert!(!crate::simd::is_closing(b'<'));
+        assert!(!crate::simd::is_closing(b' '));
+    }
+
+    #[test]
     fn string_search() {
         assert_eq!(crate::simd::find(b"a", b' '), None);
         assert_eq!(crate::simd::find(b"", b' '), None);
@@ -813,6 +821,21 @@ mod assembly_milestone {
             div.attributes().get("data-x").flatten().unwrap().as_bytes(),
             b"7"
         );
+    }
+
+    #[test]
+    fn matches_ascii_whitespace_class_tokens() {
+        let dom = parse(
+            "<div class=\"one\ttwo\r\nthree\"></div>",
+            ParserOptions::default(),
+        )
+        .unwrap();
+        let attrs = dom.nodes()[0].as_tag().unwrap().attributes();
+
+        assert!(attrs.is_class_member("one"));
+        assert!(attrs.is_class_member("two"));
+        assert!(attrs.is_class_member("three"));
+        assert!(!attrs.is_class_member("tw"));
     }
 
     #[test]

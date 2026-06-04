@@ -185,7 +185,9 @@ impl<
 
     #[inline(always)]
     fn skip_whitespaces(&mut self) {
-        self.read_while2(b' ', b'\n');
+        let start = self.stream.idx;
+        let skipped = asm_core::count_while2(&self.stream.data()[start..], [b' ', b'\n']);
+        self.stream.idx += skipped;
     }
 
     fn read_to(&mut self, needle: u8) -> &'a [u8] {
@@ -206,21 +208,6 @@ impl<
 
         self.stream.idx += end;
         self.stream.slice(start, start + end)
-    }
-
-    fn read_while2(&mut self, needle1: u8, needle2: u8) -> Option<()> {
-        loop {
-            let ch = self.stream.current_cpy()?;
-
-            let eq1 = ch == needle1;
-            let eq2 = ch == needle2;
-
-            if !eq1 & !eq2 {
-                return Some(());
-            }
-
-            self.stream.advance();
-        }
     }
 
     fn read_ident(&mut self) -> Option<&'a [u8]> {
@@ -514,7 +501,7 @@ impl<
                 // we don't always want to push them to the stack
                 // e.g. <br><p>Hello</p>
                 // <p> should not be a subtag of <br>
-                if !is_self_closing && !constants::VOID_TAGS.contains(&name) {
+                if !is_self_closing && !asm_core::is_void_tag(name) {
                     push_vec::<NodeHandle, MAX_STACK>(
                         &mut self.stack,
                         this,

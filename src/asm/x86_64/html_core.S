@@ -177,4 +177,322 @@ rbtl_asm_matches_case_insensitive:
     ret
 .size rbtl_asm_matches_case_insensitive, .-rbtl_asm_matches_case_insensitive
 
+.globl rbtl_asm_is_closing
+.type rbtl_asm_is_closing, @function
+rbtl_asm_is_closing:
+    xor eax, eax
+    cmp dil, '/'
+    je .Lis_closing_yes
+    cmp dil, '>'
+    je .Lis_closing_yes
+    ret
+.Lis_closing_yes:
+    mov eax, 1
+    ret
+.size rbtl_asm_is_closing, .-rbtl_asm_is_closing
+
+.globl rbtl_asm_count_while2
+.type rbtl_asm_count_while2, @function
+rbtl_asm_count_while2:
+    xor rax, rax
+.Lcount_while2_loop:
+    cmp rax, rsi
+    jae .Lcount_while2_ret
+    mov r9b, byte ptr [rdi + rax]
+    cmp r9b, dl
+    je .Lcount_while2_next
+    cmp r9b, cl
+    je .Lcount_while2_next
+    ret
+.Lcount_while2_next:
+    inc rax
+    jmp .Lcount_while2_loop
+.Lcount_while2_ret:
+    ret
+.size rbtl_asm_count_while2, .-rbtl_asm_count_while2
+
+.globl rbtl_asm_bytes_eq
+.type rbtl_asm_bytes_eq, @function
+rbtl_asm_bytes_eq:
+    xor rax, rax
+.Lbytes_eq_loop:
+    cmp rax, rdx
+    jae .Lbytes_eq_yes
+    mov r8b, byte ptr [rdi + rax]
+    cmp r8b, byte ptr [rsi + rax]
+    jne .Lbytes_eq_no
+    inc rax
+    jmp .Lbytes_eq_loop
+.Lbytes_eq_yes:
+    mov eax, 1
+    ret
+.Lbytes_eq_no:
+    xor eax, eax
+    ret
+.size rbtl_asm_bytes_eq, .-rbtl_asm_bytes_eq
+
+.globl rbtl_asm_is_void_tag
+.type rbtl_asm_is_void_tag, @function
+rbtl_asm_is_void_tag:
+    cmp rsi, 2
+    je .Lvoid_len2
+    cmp rsi, 3
+    je .Lvoid_len3
+    cmp rsi, 4
+    je .Lvoid_len4
+    cmp rsi, 5
+    je .Lvoid_len5
+    cmp rsi, 6
+    je .Lvoid_len6
+    cmp rsi, 7
+    je .Lvoid_len7
+    xor eax, eax
+    ret
+.Lvoid_len2:
+    cmp byte ptr [rdi], 'b'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 1], 'r'
+    sete al
+    movzx eax, al
+    ret
+.Lvoid_len3:
+    cmp byte ptr [rdi], 'c'
+    je .Lvoid_col
+    cmp byte ptr [rdi], 'h'
+    je .Lvoid_hr
+    cmp byte ptr [rdi], 'i'
+    je .Lvoid_img
+    xor eax, eax
+    ret
+.Lvoid_col:
+    cmp byte ptr [rdi + 1], 'o'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 2], 'l'
+    sete al
+    movzx eax, al
+    ret
+.Lvoid_hr:
+    cmp byte ptr [rdi + 1], 'r'
+    sete al
+    movzx eax, al
+    ret
+.Lvoid_img:
+    cmp byte ptr [rdi + 1], 'm'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 2], 'g'
+    sete al
+    movzx eax, al
+    ret
+.Lvoid_len4:
+    cmp byte ptr [rdi], 'a'
+    je .Lvoid_area
+    cmp byte ptr [rdi], 'b'
+    je .Lvoid_base
+    cmp byte ptr [rdi], 'l'
+    je .Lvoid_link
+    cmp byte ptr [rdi], 'm'
+    je .Lvoid_meta
+    cmp byte ptr [rdi], 'w'
+    je .Lvoid_wbr
+    xor eax, eax
+    ret
+.Lvoid_area:
+    cmp byte ptr [rdi + 1], 'r'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 2], 'e'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 3], 'a'
+    sete al
+    movzx eax, al
+    ret
+.Lvoid_base:
+    cmp byte ptr [rdi + 1], 'a'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 2], 's'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 3], 'e'
+    sete al
+    movzx eax, al
+    ret
+.Lvoid_link:
+    cmp byte ptr [rdi + 1], 'i'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 2], 'n'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 3], 'k'
+    sete al
+    movzx eax, al
+    ret
+.Lvoid_meta:
+    cmp byte ptr [rdi + 1], 'e'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 2], 't'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 3], 'a'
+    sete al
+    movzx eax, al
+    ret
+.Lvoid_wbr:
+    cmp byte ptr [rdi + 1], 'b'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 2], 'r'
+    sete al
+    movzx eax, al
+    ret
+.Lvoid_len5:
+    cmp byte ptr [rdi], 'e'
+    je .Lvoid_embed
+    cmp byte ptr [rdi], 'i'
+    je .Lvoid_input
+    cmp byte ptr [rdi], 'p'
+    je .Lvoid_param
+    cmp byte ptr [rdi], 't'
+    je .Lvoid_track
+    xor eax, eax
+    ret
+.Lvoid_embed:
+    cmp byte ptr [rdi + 1], 'm'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 2], 'b'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 3], 'e'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 4], 'd'
+    sete al
+    movzx eax, al
+    ret
+.Lvoid_input:
+    cmp byte ptr [rdi + 1], 'n'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 2], 'p'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 3], 'u'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 4], 't'
+    sete al
+    movzx eax, al
+    ret
+.Lvoid_param:
+    cmp byte ptr [rdi + 1], 'a'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 2], 'r'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 3], 'a'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 4], 'm'
+    sete al
+    movzx eax, al
+    ret
+.Lvoid_track:
+    cmp byte ptr [rdi + 1], 'r'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 2], 'a'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 3], 'c'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 4], 'k'
+    sete al
+    movzx eax, al
+    ret
+.Lvoid_len6:
+    cmp byte ptr [rdi], 's'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 1], 'o'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 2], 'u'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 3], 'r'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 4], 'c'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 5], 'e'
+    sete al
+    movzx eax, al
+    ret
+.Lvoid_len7:
+    cmp byte ptr [rdi], 'k'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 1], 'e'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 2], 'y'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 3], 'g'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 4], 'e'
+    jne .Lvoid_no
+    cmp byte ptr [rdi + 5], 'n'
+    sete al
+    movzx eax, al
+    ret
+.Lvoid_no:
+    xor eax, eax
+    ret
+.size rbtl_asm_is_void_tag, .-rbtl_asm_is_void_tag
+
+.globl rbtl_asm_contains_ascii_whitespace_token
+.type rbtl_asm_contains_ascii_whitespace_token, @function
+rbtl_asm_contains_ascii_whitespace_token:
+    test rcx, rcx
+    je .Ltoken_no
+    xor rax, rax
+.Ltoken_skip:
+    cmp rax, rsi
+    jae .Ltoken_no
+    mov r9b, byte ptr [rdi + rax]
+    call .Ltoken_is_space
+    test r10b, r10b
+    je .Ltoken_start
+    inc rax
+    jmp .Ltoken_skip
+.Ltoken_start:
+    mov r11, rax
+.Ltoken_scan:
+    cmp rax, rsi
+    jae .Ltoken_check
+    mov r9b, byte ptr [rdi + rax]
+    call .Ltoken_is_space
+    test r10b, r10b
+    jne .Ltoken_check
+    inc rax
+    jmp .Ltoken_scan
+.Ltoken_check:
+    mov r9, rax
+    sub r9, r11
+    cmp r9, rcx
+    jne .Ltoken_after
+    xor r9, r9
+.Ltoken_cmp:
+    cmp r9, rcx
+    jae .Ltoken_yes
+    lea r10, [r11 + r9]
+    mov r10b, byte ptr [rdi + r10]
+    cmp r10b, byte ptr [rdx + r9]
+    jne .Ltoken_after
+    inc r9
+    jmp .Ltoken_cmp
+.Ltoken_after:
+    cmp rax, rsi
+    jae .Ltoken_no
+    inc rax
+    jmp .Ltoken_skip
+.Ltoken_yes:
+    mov eax, 1
+    ret
+.Ltoken_no:
+    xor eax, eax
+    ret
+.Ltoken_is_space:
+    xor r10d, r10d
+    cmp r9b, ' '
+    je .Ltoken_space_yes
+    cmp r9b, 9
+    jb .Ltoken_space_ret
+    cmp r9b, 13
+    ja .Ltoken_space_ret
+.Ltoken_space_yes:
+    mov r10b, 1
+.Ltoken_space_ret:
+    ret
+.size rbtl_asm_contains_ascii_whitespace_token, .-rbtl_asm_contains_ascii_whitespace_token
+
 .section .note.GNU-stack,"",@progbits

@@ -9,7 +9,7 @@ mod portable;
 /// Checks if the given byte is a "closing" byte (/ or >)
 #[inline]
 pub fn is_closing(needle: u8) -> bool {
-    (needle == b'/') | (needle == b'>')
+    asm_core::is_closing(needle)
 }
 
 /// Searches for the first non-identifier in `haystack`

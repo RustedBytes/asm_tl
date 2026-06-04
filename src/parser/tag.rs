@@ -1,7 +1,7 @@
 #[cfg(feature = "std")]
 use crate::queryselector::{self, QuerySelectorIterator};
 use crate::{
-    Bytes, InnerNodeHandle, ParseError,
+    Bytes, InnerNodeHandle, ParseError, asm_core,
     inline::{hashmap::InlineHashMap, vec::InlineVec},
 };
 use core::{fmt, mem};
@@ -63,8 +63,9 @@ impl<'a> Attributes<'a> {
 
     /// Checks whether a given string is in the class names list
     pub fn is_class_member<B: AsRef<[u8]>>(&self, member: B) -> bool {
-        self.class_iter()
-            .is_some_and(|mut i| i.any(|s| s.as_bytes() == member.as_ref()))
+        self.class.as_ref().is_some_and(|class| {
+            asm_core::contains_ascii_whitespace_token(class.as_bytes(), member.as_ref())
+        })
     }
 
     /// Checks whether this attributes collection contains a given key and returns its value
