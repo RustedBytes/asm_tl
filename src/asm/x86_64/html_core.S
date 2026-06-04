@@ -1109,23 +1109,24 @@ rbtl_asm_scan_html_event:
 
 .Lscan_event_text:
     mov r9, rdx
-.Lscan_event_text_word_loop:
-    lea r10, [r9 + 8]
+    mov eax, 0x3c3c3c3c
+    movd xmm1, eax
+    pshufd xmm1, xmm1, 0
+.Lscan_event_text_vector_loop:
+    lea r10, [r9 + 16]
     cmp r10, rsi
     ja .Lscan_event_text_loop
-    mov rax, qword ptr [rdi + r9]
-    mov r10, 0x3c3c3c3c3c3c3c3c
-    xor rax, r10
-    mov r10, rax
-    mov r11, 0x0101010101010101
-    sub rax, r11
-    not r10
-    and rax, r10
-    mov r11, 0x8080808080808080
-    and rax, r11
-    jne .Lscan_event_text_loop
-    add r9, 8
-    jmp .Lscan_event_text_word_loop
+    movdqu xmm0, xmmword ptr [rdi + r9]
+    pcmpeqb xmm0, xmm1
+    pmovmskb eax, xmm0
+    test eax, eax
+    jne .Lscan_event_text_vector_hit
+    add r9, 16
+    jmp .Lscan_event_text_vector_loop
+.Lscan_event_text_vector_hit:
+    bsf eax, eax
+    add r9, rax
+    jmp .Lscan_event_text_emit
 .Lscan_event_text_loop:
     cmp r9, rsi
     jae .Lscan_event_text_emit
