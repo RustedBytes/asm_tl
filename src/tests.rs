@@ -799,6 +799,33 @@ mod query_selector {
 
         assert_eq!(value, Some("hello".to_string()));
     }
+
+    #[test]
+    fn attribute_selector_byte_ops() {
+        let input =
+            r#"<div><a data-name="prefix-mid-suffix" data-tags="one two three">hit</a></div>"#;
+        let dom = parse(input, ParserOptions::default()).unwrap();
+
+        assert_eq!(
+            dom.query_selector("   [data-name^=prefix]")
+                .unwrap()
+                .count(),
+            1
+        );
+        assert_eq!(
+            dom.query_selector("[data-name$=suffix]").unwrap().count(),
+            1
+        );
+        assert_eq!(dom.query_selector("[data-name*=mid]").unwrap().count(), 1);
+        assert_eq!(
+            dom.query_selector("[data-name=prefix-mid-suffix]")
+                .unwrap()
+                .count(),
+            1
+        );
+        assert_eq!(dom.query_selector("[data-tags~=two]").unwrap().count(), 1);
+        assert_eq!(dom.query_selector("[data-tags~=tw]").unwrap().count(), 0);
+    }
 }
 
 mod assembly_milestone {

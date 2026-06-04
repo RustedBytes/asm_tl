@@ -19,6 +19,25 @@ unsafe extern "C" {
         needle: *const u8,
         needle_len: usize,
     ) -> u32;
+    fn rbtl_asm_count_spaces(ptr: *const u8, len: usize) -> usize;
+    fn rbtl_asm_starts_with(
+        haystack: *const u8,
+        haystack_len: usize,
+        needle: *const u8,
+        needle_len: usize,
+    ) -> u32;
+    fn rbtl_asm_ends_with(
+        haystack: *const u8,
+        haystack_len: usize,
+        needle: *const u8,
+        needle_len: usize,
+    ) -> u32;
+    fn rbtl_asm_contains_bytes(
+        haystack: *const u8,
+        haystack_len: usize,
+        needle: *const u8,
+        needle_len: usize,
+    ) -> u32;
 }
 
 #[inline]
@@ -90,6 +109,47 @@ pub(crate) fn bytes_eq(left: &[u8], right: &[u8]) -> bool {
 pub(crate) fn contains_ascii_whitespace_token(haystack: &[u8], needle: &[u8]) -> bool {
     unsafe {
         rbtl_asm_contains_ascii_whitespace_token(
+            haystack.as_ptr(),
+            haystack.len(),
+            needle.as_ptr(),
+            needle.len(),
+        ) != 0
+    }
+}
+
+#[inline]
+pub(crate) fn count_spaces(haystack: &[u8]) -> usize {
+    unsafe { rbtl_asm_count_spaces(haystack.as_ptr(), haystack.len()) }
+}
+
+#[inline]
+pub(crate) fn starts_with(haystack: &[u8], needle: &[u8]) -> bool {
+    unsafe {
+        rbtl_asm_starts_with(
+            haystack.as_ptr(),
+            haystack.len(),
+            needle.as_ptr(),
+            needle.len(),
+        ) != 0
+    }
+}
+
+#[inline]
+pub(crate) fn ends_with(haystack: &[u8], needle: &[u8]) -> bool {
+    unsafe {
+        rbtl_asm_ends_with(
+            haystack.as_ptr(),
+            haystack.len(),
+            needle.as_ptr(),
+            needle.len(),
+        ) != 0
+    }
+}
+
+#[inline]
+pub(crate) fn contains_bytes(haystack: &[u8], needle: &[u8]) -> bool {
+    unsafe {
+        rbtl_asm_contains_bytes(
             haystack.as_ptr(),
             haystack.len(),
             needle.as_ptr(),

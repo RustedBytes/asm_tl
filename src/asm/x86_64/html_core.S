@@ -167,6 +167,13 @@ rbtl_asm_selector_kind:
     je .Lselector_none
     xor rax, rax
     xor r8d, r8d
+.Lselector_skip_leading:
+    cmp rax, rsi
+    jae .Lselector_none
+    cmp byte ptr [rdi + rax], ' '
+    jne .Lselector_loop
+    inc rax
+    jmp .Lselector_skip_leading
 .Lselector_loop:
     cmp rax, rsi
     jae .Lselector_done
@@ -543,5 +550,101 @@ rbtl_asm_contains_ascii_whitespace_token:
 .Ltoken_space_ret:
     ret
 .size rbtl_asm_contains_ascii_whitespace_token, .-rbtl_asm_contains_ascii_whitespace_token
+
+.globl rbtl_asm_count_spaces
+.type rbtl_asm_count_spaces, @function
+rbtl_asm_count_spaces:
+    xor rax, rax
+.Lcount_spaces_loop:
+    cmp rax, rsi
+    jae .Lcount_spaces_ret
+    cmp byte ptr [rdi + rax], ' '
+    jne .Lcount_spaces_ret
+    inc rax
+    jmp .Lcount_spaces_loop
+.Lcount_spaces_ret:
+    ret
+.size rbtl_asm_count_spaces, .-rbtl_asm_count_spaces
+
+.globl rbtl_asm_starts_with
+.type rbtl_asm_starts_with, @function
+rbtl_asm_starts_with:
+    cmp rcx, rsi
+    ja .Lstarts_no
+    xor rax, rax
+.Lstarts_loop:
+    cmp rax, rcx
+    jae .Lstarts_yes
+    mov r8b, byte ptr [rdi + rax]
+    cmp r8b, byte ptr [rdx + rax]
+    jne .Lstarts_no
+    inc rax
+    jmp .Lstarts_loop
+.Lstarts_yes:
+    mov eax, 1
+    ret
+.Lstarts_no:
+    xor eax, eax
+    ret
+.size rbtl_asm_starts_with, .-rbtl_asm_starts_with
+
+.globl rbtl_asm_ends_with
+.type rbtl_asm_ends_with, @function
+rbtl_asm_ends_with:
+    cmp rcx, rsi
+    ja .Lends_no
+    mov r8, rsi
+    sub r8, rcx
+    xor rax, rax
+.Lends_loop:
+    cmp rax, rcx
+    jae .Lends_yes
+    lea r9, [r8 + rax]
+    mov r10b, byte ptr [rdi + r9]
+    cmp r10b, byte ptr [rdx + rax]
+    jne .Lends_no
+    inc rax
+    jmp .Lends_loop
+.Lends_yes:
+    mov eax, 1
+    ret
+.Lends_no:
+    xor eax, eax
+    ret
+.size rbtl_asm_ends_with, .-rbtl_asm_ends_with
+
+.globl rbtl_asm_contains_bytes
+.type rbtl_asm_contains_bytes, @function
+rbtl_asm_contains_bytes:
+    test rcx, rcx
+    je .Lcontains_yes
+    cmp rcx, rsi
+    ja .Lcontains_no
+    mov r8, rsi
+    sub r8, rcx
+    xor rax, rax
+.Lcontains_outer:
+    cmp rax, r8
+    ja .Lcontains_no
+    xor r9, r9
+.Lcontains_inner:
+    cmp r9, rcx
+    jae .Lcontains_yes
+    lea r10, [rax + r9]
+    mov r11b, byte ptr [rdi + r10]
+    cmp r11b, byte ptr [rdx + r9]
+    jne .Lcontains_next
+    inc r9
+    jmp .Lcontains_inner
+.Lcontains_next:
+    inc rax
+    jmp .Lcontains_outer
+.Lcontains_yes:
+    mov eax, 1
+    ret
+.Lcontains_no:
+    xor eax, eax
+    ret
+.size rbtl_asm_contains_bytes, .-rbtl_asm_contains_bytes
 
 .section .note.GNU-stack,"",@progbits

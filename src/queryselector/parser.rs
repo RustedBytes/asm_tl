@@ -1,6 +1,6 @@
 #[cfg(not(feature = "std"))]
 use crate::ParseError;
-use crate::{stream::Stream, util};
+use crate::{asm_core, stream::Stream, util};
 
 use super::Selector;
 
@@ -18,13 +18,9 @@ impl<'a> Parser<'a> {
     }
 
     fn skip_whitespaces(&mut self) -> bool {
-        let has_whitespace = self.stream.expect_and_skip_cond(b' ');
-        while !self.stream.is_eof() {
-            if self.stream.expect_and_skip(b' ').is_none() {
-                break;
-            }
-        }
-        has_whitespace
+        let skipped = asm_core::count_spaces(&self.stream.data()[self.stream.idx..]);
+        self.stream.idx += skipped;
+        skipped != 0
     }
 
     fn read_identifier(&mut self) -> &'a [u8] {

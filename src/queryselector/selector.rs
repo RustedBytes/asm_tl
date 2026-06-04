@@ -71,24 +71,23 @@ impl<'a, const MAX_SELECTOR_NODES: usize> Selector<'a, MAX_SELECTOR_NODES> {
                 .as_tag()
                 .is_some_and(|t| t._attributes.get(*attribute).is_some()),
             Self::AttributeValue(attribute, value) => {
-                check_attribute(node, attribute, value, |attr, value| attr == value)
+                check_attribute(node, attribute, value, asm_core::bytes_eq)
             }
             Self::AttributeValueEndsWith(attribute, value) => {
-                check_attribute(node, attribute, value, |attr, value| attr.ends_with(value))
+                check_attribute(node, attribute, value, asm_core::ends_with)
             }
             Self::AttributeValueStartsWith(attribute, value) => {
-                check_attribute(node, attribute, value, |attr, value| {
-                    attr.starts_with(value)
-                })
+                check_attribute(node, attribute, value, asm_core::starts_with)
             }
             Self::AttributeValueSubstring(attribute, value) => {
-                check_attribute(node, attribute, value, |attr, value| attr.contains(value))
+                check_attribute(node, attribute, value, asm_core::contains_bytes)
             }
-            Self::AttributeValueWhitespacedContains(attribute, value) => {
-                check_attribute(node, attribute, value, |attr, value| {
-                    attr.split_whitespace().any(|x| x == value)
-                })
-            }
+            Self::AttributeValueWhitespacedContains(attribute, value) => check_attribute(
+                node,
+                attribute,
+                value,
+                asm_core::contains_ascii_whitespace_token,
+            ),
             #[cfg(feature = "std")]
             _ => false,
         }
@@ -97,16 +96,12 @@ impl<'a, const MAX_SELECTOR_NODES: usize> Selector<'a, MAX_SELECTOR_NODES> {
 
 fn check_attribute<F>(node: &Node, attribute: &[u8], value: &[u8], callback: F) -> bool
 where
-    F: Fn(&str, &str) -> bool,
+    F: Fn(&[u8], &[u8]) -> bool,
 {
-    let Ok(value) = core::str::from_utf8(value) else {
-        return false;
-    };
     node.as_tag().is_some_and(|t| {
         t._attributes
             .get(attribute)
             .flatten()
-            .and_then(|attr| attr.try_as_utf8_str())
-            .is_some_and(|attr| callback(attr, value))
+            .is_some_and(|attr| callback(attr.as_bytes(), value))
     })
 }
