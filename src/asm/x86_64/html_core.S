@@ -975,4 +975,54 @@ rbtl_asm_selector_combinator_kind:
     ret
 .size rbtl_asm_selector_combinator_kind, .-rbtl_asm_selector_combinator_kind
 
+.globl rbtl_asm_usize_is_zero
+.type rbtl_asm_usize_is_zero, @function
+rbtl_asm_usize_is_zero:
+    xor eax, eax
+    test rdi, rdi
+    sete al
+    ret
+.size rbtl_asm_usize_is_zero, .-rbtl_asm_usize_is_zero
+
+.globl rbtl_asm_usize_lt
+.type rbtl_asm_usize_lt, @function
+rbtl_asm_usize_lt:
+    xor eax, eax
+    cmp rdi, rsi
+    setb al
+    ret
+.size rbtl_asm_usize_lt, .-rbtl_asm_usize_lt
+
+.globl rbtl_asm_usize_ge
+.type rbtl_asm_usize_ge, @function
+rbtl_asm_usize_ge:
+    xor eax, eax
+    cmp rdi, rsi
+    setae al
+    ret
+.size rbtl_asm_usize_ge, .-rbtl_asm_usize_ge
+
+.globl rbtl_asm_usize_min
+.type rbtl_asm_usize_min, @function
+rbtl_asm_usize_min:
+    mov rax, rdi
+    cmp rdi, rsi
+    cmova rax, rsi
+    ret
+.size rbtl_asm_usize_min, .-rbtl_asm_usize_min
+
+.globl rbtl_asm_usize_add
+.type rbtl_asm_usize_add, @function
+rbtl_asm_usize_add:
+    lea rax, [rdi + rsi]
+    ret
+.size rbtl_asm_usize_add, .-rbtl_asm_usize_add
+
+.globl rbtl_asm_usize_sub_one
+.type rbtl_asm_usize_sub_one, @function
+rbtl_asm_usize_sub_one:
+    lea rax, [rdi - 1]
+    ret
+.size rbtl_asm_usize_sub_one, .-rbtl_asm_usize_sub_one
+
 .section .note.GNU-stack,"",@progbits

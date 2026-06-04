@@ -52,6 +52,12 @@ unsafe extern "C" {
     fn rbtl_asm_selector_token_kind(byte: u8) -> u32;
     fn rbtl_asm_selector_attr_op_kind(byte: u8) -> u32;
     fn rbtl_asm_selector_combinator_kind(byte: u8, has_whitespace: u32) -> u32;
+    fn rbtl_asm_usize_is_zero(value: usize) -> u32;
+    fn rbtl_asm_usize_lt(left: usize, right: usize) -> u32;
+    fn rbtl_asm_usize_ge(left: usize, right: usize) -> u32;
+    fn rbtl_asm_usize_min(left: usize, right: usize) -> usize;
+    fn rbtl_asm_usize_add(left: usize, right: usize) -> usize;
+    fn rbtl_asm_usize_sub_one(value: usize) -> usize;
 }
 
 #[inline]
@@ -241,4 +247,34 @@ pub(crate) fn selector_attr_op_kind(byte: u8) -> u32 {
 #[inline]
 pub(crate) fn selector_combinator_kind(byte: u8, has_whitespace: bool) -> u32 {
     unsafe { rbtl_asm_selector_combinator_kind(byte, has_whitespace as u32) }
+}
+
+#[inline]
+pub(crate) fn usize_is_zero(value: usize) -> bool {
+    unsafe { rbtl_asm_usize_is_zero(value) != 0 }
+}
+
+#[inline]
+pub(crate) fn usize_lt(left: usize, right: usize) -> bool {
+    unsafe { rbtl_asm_usize_lt(left, right) != 0 }
+}
+
+#[inline]
+pub(crate) fn usize_ge(left: usize, right: usize) -> bool {
+    unsafe { rbtl_asm_usize_ge(left, right) != 0 }
+}
+
+#[inline]
+pub(crate) fn usize_min(left: usize, right: usize) -> usize {
+    unsafe { rbtl_asm_usize_min(left, right) }
+}
+
+#[inline]
+pub(crate) fn usize_add(left: usize, right: usize) -> usize {
+    unsafe { rbtl_asm_usize_add(left, right) }
+}
+
+#[inline]
+pub(crate) fn usize_sub_one(value: usize) -> usize {
+    unsafe { rbtl_asm_usize_sub_one(value) }
 }

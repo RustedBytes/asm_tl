@@ -1,6 +1,6 @@
 use core::marker::PhantomData;
 
-use crate::{NodeHandle, Parser};
+use crate::{NodeHandle, Parser, asm_core};
 
 use super::{Selector, iterable::QueryIterable};
 
@@ -134,9 +134,9 @@ impl<
     type Item = NodeHandle;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while self.index < self.len {
+        while asm_core::usize_lt(self.index, self.len) {
             let node = self.collection.get(self.parser, self.index);
-            self.index += 1;
+            self.index = asm_core::usize_add(self.index, 1);
             if let Some((node, id)) = node {
                 let matches = self.selector.matches(node);
 

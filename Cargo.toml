@@ -1,6 +1,6 @@
 [package]
-name = "rustedbytes-tl"
-version = "0.2.0"
+name = "blazingly-fast-tl"
+version = "0.1.0"
 authors = ["y21", "Yehor Smoliakov"]
 edition = "2024"
 license = "MIT"

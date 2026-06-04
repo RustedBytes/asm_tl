@@ -1,4 +1,4 @@
-use core::cmp::min;
+use crate::asm_core;
 
 /// Internal struct for iterating over input bytes
 #[derive(Debug)]
@@ -62,7 +62,7 @@ impl<'a, T> Stream<'a, T> {
     /// Checks whether the stream has reached the end
     #[inline]
     pub fn is_eof(&self) -> bool {
-        self.idx >= self.data.len()
+        asm_core::usize_ge(self.idx, self.data.len())
     }
 
     /// Returns a subslice of this stream, and panicks if out of bounds
@@ -75,12 +75,12 @@ impl<'a, T> Stream<'a, T> {
     /// to prevent out of bounds panicking
     #[inline]
     pub fn slice_checked(&self, from: usize, to: usize) -> &'a [T] {
-        &self.data[from..min(self.data.len(), to)]
+        &self.data[from..asm_core::usize_min(self.data.len(), to)]
     }
 
     /// Same as slice, but the second argument is how many elements to slice
     #[inline]
     pub fn slice_len(&self, from: usize, len: usize) -> &'a [T] {
-        self.slice_checked(from, self.idx + len)
+        self.slice_checked(from, asm_core::usize_add(self.idx, len))
     }
 }

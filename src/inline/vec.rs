@@ -3,7 +3,7 @@ use core::mem::MaybeUninit;
 use core::ops::Index;
 use core::ptr;
 
-use crate::ParseError;
+use crate::{ParseError, asm_core};
 
 /// A wrapper around a `Vec<T>` that lives on the stack if it is small enough.
 #[derive(Debug, Clone)]
@@ -25,7 +25,7 @@ impl<T, const N: usize> InlineVec<T, N> {
     /// Returns true if the vector contains no elements
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.len() == 0
+        asm_core::usize_is_zero(self.len())
     }
 
     /// Checks whether this vector is allocated on the heap
@@ -82,7 +82,7 @@ impl<T, const N: usize> InlineVec<T, N> {
         if self.is_empty() {
             None
         } else {
-            Some(self.remove(self.len() - 1))
+            Some(self.remove(asm_core::usize_sub_one(self.len())))
         }
     }
 
@@ -235,7 +235,7 @@ impl<T, const N: usize> InlineVecInner<T, N> {
     pub fn get(&self, idx: usize) -> Option<&T> {
         match self {
             Self::Inline { data, len } => {
-                if idx < *len {
+                if asm_core::usize_lt(idx, *len) {
                     Some(unsafe { &*data.get_unchecked(idx).as_ptr() })
                 } else {
                     None
@@ -249,7 +249,7 @@ impl<T, const N: usize> InlineVecInner<T, N> {
     pub fn get_mut(&mut self, idx: usize) -> Option<&mut T> {
         match self {
             Self::Inline { data, len } => {
-                if idx < *len {
+                if asm_core::usize_lt(idx, *len) {
                     Some(unsafe { &mut *data.get_unchecked_mut(idx).as_mut_ptr() })
                 } else {
                     None
@@ -263,7 +263,7 @@ impl<T, const N: usize> InlineVecInner<T, N> {
     pub fn remove(&mut self, idx: usize) -> T {
         match self {
             Self::Inline { data, len } => {
-                assert!(idx < *len);
+                assert!(asm_core::usize_lt(idx, *len));
 
                 // at this point we know idx is in bounds
                 // carefully replace the value with MaybeUninit::uninit(), so it can be returned
@@ -271,7 +271,7 @@ impl<T, const N: usize> InlineVecInner<T, N> {
                     core::mem::replace(data.get_unchecked_mut(idx), MaybeUninit::uninit())
                 };
 
-                for i in idx + 1..*len {
+                for i in asm_core::usize_add(idx, 1)..*len {
                     // TODO(y21): data.swap_unchecked() worth it?
                     data.swap(i, i - 1);
                 }
@@ -296,7 +296,7 @@ impl<T, const N: usize> InlineVecInner<T, N> {
             }
         };
 
-        if *len >= N {
+        if asm_core::usize_ge(*len, N) {
             #[cfg(not(feature = "std"))]
             {
                 return Err(ParseError::ChildCapacityExceeded);
@@ -359,8 +359,8 @@ impl<'a, T, const N: usize> Iterator for InlineVecIter<'a, T, N> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.idx += 1;
-        self.vec.get(self.idx - 1)
+        self.idx = asm_core::usize_add(self.idx, 1);
+        self.vec.get(asm_core::usize_sub_one(self.idx))
     }
 }
 
