@@ -55,12 +55,18 @@ const PYPI_SIMPLE: &str = r#"<!DOCTYPE html>
 "#;
 
 #[cfg(feature = "std")]
-fn parse_for_bench(input: &str) {
+fn parse_current_for_bench(input: &str) {
     tl::parse(input, tl::ParserOptions::default()).unwrap();
 }
 
+#[cfg(feature = "std")]
+fn parse_baseline_for_bench(input: &str) {
+    rustedbytes_tl_baseline::parse(input, rustedbytes_tl_baseline::ParserOptions::default())
+        .unwrap();
+}
+
 #[cfg(not(feature = "std"))]
-fn parse_for_bench(input: &str) {
+fn parse_current_for_bench(input: &str) {
     const MAX_NODES: usize = 512;
     const MAX_STACK: usize = 64;
     const MAX_ROOTS: usize = 64;
@@ -76,15 +82,29 @@ fn parse_for_bench(input: &str) {
 }
 
 pub fn criterion_benchmark(cr: &mut Criterion) {
-    cr.bench_function("tl", |b| {
+    cr.bench_function("current/tl", |b| {
         b.iter(|| {
-            parse_for_bench(black_box(INPUT));
+            parse_current_for_bench(black_box(INPUT));
         });
     });
 
-    cr.bench_function("pypi_simple", |b| {
+    #[cfg(feature = "std")]
+    cr.bench_function("rustedbytes-tl/tl", |b| {
         b.iter(|| {
-            parse_for_bench(black_box(PYPI_SIMPLE));
+            parse_baseline_for_bench(black_box(INPUT));
+        });
+    });
+
+    cr.bench_function("current/pypi_simple", |b| {
+        b.iter(|| {
+            parse_current_for_bench(black_box(PYPI_SIMPLE));
+        });
+    });
+
+    #[cfg(feature = "std")]
+    cr.bench_function("rustedbytes-tl/pypi_simple", |b| {
+        b.iter(|| {
+            parse_baseline_for_bench(black_box(PYPI_SIMPLE));
         });
     });
 }

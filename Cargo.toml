@@ -29,6 +29,7 @@ cc = "1"
 
 [dev-dependencies]
 criterion = { version = "0.3", features = ["html_reports"] }
+rustedbytes_tl_baseline = { package = "rustedbytes-tl", version = "0.2.0", features = ["std"] }
 
 [[bench]]
 name = "tl"
@@ -44,6 +45,7 @@ codegen-units = 1
 panic = "abort"
 incremental = false
 debug = false
+debug-assertions = false
 overflow-checks = false
 
 [profile.bench]
@@ -52,4 +54,5 @@ lto = "fat"
 codegen-units = 1
 incremental = false
 debug = false
+debug-assertions = false
 overflow-checks = false
