@@ -22,10 +22,3 @@ static IDENT_CHARS: [bool; 256] = {
 pub fn is_ident(c: u8) -> bool {
     IDENT_CHARS[c as usize]
 }
-
-#[inline(always)]
-pub fn to_lower(byte: u8) -> u8 {
-    let is_upper = byte.is_ascii_uppercase() as u8;
-    let lower = is_upper * 0x20;
-    byte + lower
-}

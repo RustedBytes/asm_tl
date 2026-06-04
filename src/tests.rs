@@ -296,10 +296,12 @@ mod simd {
 
     #[test]
     fn matches_case_insensitive_test() {
+        assert!(crate::simd::matches_case_insensitive(b"", *b""));
         assert!(crate::simd::matches_case_insensitive(b"hTmL", *b"html"));
         assert!(!crate::simd::matches_case_insensitive(b"hTmLs", *b"html"));
         assert!(!crate::simd::matches_case_insensitive(b"hTmy", *b"html"));
         assert!(!crate::simd::matches_case_insensitive(b"/Tmy", *b"html"));
+        assert!(!crate::simd::matches_case_insensitive(b"HTML", *b"HTML"));
     }
 
     #[test]

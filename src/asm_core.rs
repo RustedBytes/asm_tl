@@ -7,6 +7,8 @@ unsafe extern "C" {
     fn rbtl_asm_search_non_ident(ptr: *const u8, len: usize) -> usize;
     fn rbtl_asm_validate_subset(ptr: *const u8, len: usize) -> u32;
     fn rbtl_asm_selector_kind(ptr: *const u8, len: usize) -> u32;
+    fn rbtl_asm_matches_case_insensitive(haystack: *const u8, needle: *const u8, len: usize)
+    -> u32;
 }
 
 #[inline]
@@ -43,4 +45,12 @@ pub(crate) fn validate_subset(input: &[u8]) -> bool {
 #[inline]
 pub(crate) fn selector_kind(input: &[u8]) -> u32 {
     unsafe { rbtl_asm_selector_kind(input.as_ptr(), input.len()) }
+}
+
+#[inline]
+pub(crate) fn matches_case_insensitive(haystack: &[u8], needle: &[u8]) -> bool {
+    debug_assert_eq!(haystack.len(), needle.len());
+    unsafe {
+        rbtl_asm_matches_case_insensitive(haystack.as_ptr(), needle.as_ptr(), haystack.len()) != 0
+    }
 }

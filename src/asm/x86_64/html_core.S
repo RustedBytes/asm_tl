@@ -151,4 +151,30 @@ rbtl_asm_selector_kind:
     ret
 .size rbtl_asm_selector_kind, .-rbtl_asm_selector_kind
 
+.globl rbtl_asm_matches_case_insensitive
+.type rbtl_asm_matches_case_insensitive, @function
+rbtl_asm_matches_case_insensitive:
+    xor rax, rax
+.Lcase_loop:
+    cmp rax, rdx
+    jae .Lcase_yes
+    mov r8b, byte ptr [rdi + rax]
+    cmp r8b, 'A'
+    jb .Lcase_compare
+    cmp r8b, 'Z'
+    ja .Lcase_compare
+    add r8b, 32
+.Lcase_compare:
+    cmp r8b, byte ptr [rsi + rax]
+    jne .Lcase_no
+    inc rax
+    jmp .Lcase_loop
+.Lcase_yes:
+    mov eax, 1
+    ret
+.Lcase_no:
+    xor eax, eax
+    ret
+.size rbtl_asm_matches_case_insensitive, .-rbtl_asm_matches_case_insensitive
+
 .section .note.GNU-stack,"",@progbits

@@ -1,4 +1,4 @@
-use crate::{asm_core, util};
+use crate::asm_core;
 
 #[allow(dead_code)]
 mod fallback;
@@ -36,11 +36,5 @@ pub fn matches_case_insensitive<const N: usize>(haystack: &[u8], needle: [u8; N]
         return false;
     }
 
-    // LLVM seems to already generate pretty good SIMD even without explicit use
-
-    let mut mask = true;
-    for i in 0..N {
-        mask &= util::to_lower(haystack[i]) == needle[i];
-    }
-    mask
+    asm_core::matches_case_insensitive(haystack, &needle)
 }
