@@ -419,7 +419,7 @@ impl<
             self.add_to_parent(comment)?;
         } else {
             let Some(tag) = self.read_ident() else {
-                return Ok(None);
+                return Err(ParseError::UnsupportedAssemblySyntax);
             };
 
             self.skip_whitespaces();
@@ -437,6 +437,8 @@ impl<
 
                 self.skip_whitespaces();
                 self.stream.advance(); // skip >
+            } else {
+                return Err(ParseError::UnsupportedAssemblySyntax);
             }
         }
 
@@ -536,10 +538,6 @@ impl<
     pub(crate) fn parse(&mut self) -> Result<(), ParseError> {
         if !asm_core::len_fits_u32(self.stream.len()) {
             return Err(ParseError::InvalidLength);
-        }
-
-        if !asm_core::validate_subset(self.stream.data()) {
-            return Err(ParseError::UnsupportedAssemblySyntax);
         }
 
         while !self.stream.is_eof() {

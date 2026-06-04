@@ -6,6 +6,25 @@
 .type rbtl_asm_find, @function
 rbtl_asm_find:
     xor rax, rax
+    movd xmm1, edx
+    punpcklbw xmm1, xmm1
+    punpcklwd xmm1, xmm1
+    pshufd xmm1, xmm1, 0
+.Lfind_vector_loop:
+    lea r8, [rax + 16]
+    cmp r8, rsi
+    ja .Lfind_loop
+    movdqu xmm0, xmmword ptr [rdi + rax]
+    pcmpeqb xmm0, xmm1
+    pmovmskb r8d, xmm0
+    test r8d, r8d
+    jne .Lfind_vector_hit
+    add rax, 16
+    jmp .Lfind_vector_loop
+.Lfind_vector_hit:
+    bsf r8d, r8d
+    add rax, r8
+    ret
 .Lfind_loop:
     cmp rax, rsi
     jae .Lfind_none
@@ -23,6 +42,39 @@ rbtl_asm_find:
 .type rbtl_asm_find3, @function
 rbtl_asm_find3:
     xor rax, rax
+    movd xmm1, edx
+    movd xmm2, ecx
+    movd xmm3, r8d
+    punpcklbw xmm1, xmm1
+    punpcklwd xmm1, xmm1
+    pshufd xmm1, xmm1, 0
+    punpcklbw xmm2, xmm2
+    punpcklwd xmm2, xmm2
+    pshufd xmm2, xmm2, 0
+    punpcklbw xmm3, xmm3
+    punpcklwd xmm3, xmm3
+    pshufd xmm3, xmm3, 0
+.Lfind3_vector_loop:
+    lea r9, [rax + 16]
+    cmp r9, rsi
+    ja .Lfind3_loop
+    movdqu xmm0, xmmword ptr [rdi + rax]
+    movdqa xmm4, xmm0
+    movdqa xmm5, xmm0
+    pcmpeqb xmm0, xmm1
+    pcmpeqb xmm4, xmm2
+    pcmpeqb xmm5, xmm3
+    por xmm0, xmm4
+    por xmm0, xmm5
+    pmovmskb r9d, xmm0
+    test r9d, r9d
+    jne .Lfind3_vector_hit
+    add rax, 16
+    jmp .Lfind3_vector_loop
+.Lfind3_vector_hit:
+    bsf r9d, r9d
+    add rax, r9
+    ret
 .Lfind3_loop:
     cmp rax, rsi
     jae .Lfind3_none
@@ -45,6 +97,85 @@ rbtl_asm_find3:
 .type rbtl_asm_search_non_ident, @function
 rbtl_asm_search_non_ident:
     xor rax, rax
+    mov edx, 0x2f2f2f2f
+    movd xmm2, edx
+    pshufd xmm2, xmm2, 0
+    mov edx, 0x3a3a3a3a
+    movd xmm3, edx
+    pshufd xmm3, xmm3, 0
+    mov edx, 0x40404040
+    movd xmm4, edx
+    pshufd xmm4, xmm4, 0
+    mov edx, 0x5b5b5b5b
+    movd xmm5, edx
+    pshufd xmm5, xmm5, 0
+    mov edx, 0x60606060
+    movd xmm6, edx
+    pshufd xmm6, xmm6, 0
+    mov edx, 0x7b7b7b7b
+    movd xmm7, edx
+    pshufd xmm7, xmm7, 0
+    mov edx, 0x2d2d2d2d
+    movd xmm8, edx
+    pshufd xmm8, xmm8, 0
+    mov edx, 0x5f5f5f5f
+    movd xmm9, edx
+    pshufd xmm9, xmm9, 0
+    mov edx, 0x2b2b2b2b
+    movd xmm10, edx
+    pshufd xmm10, xmm10, 0
+.Lident_vector_loop:
+    lea r8, [rax + 16]
+    cmp r8, rsi
+    ja .Lident_loop
+    movdqu xmm1, xmmword ptr [rdi + rax]
+
+    movdqa xmm13, xmm1
+    pcmpgtb xmm13, xmm2
+    movdqa xmm14, xmm3
+    pcmpgtb xmm14, xmm1
+    pand xmm13, xmm14
+
+    movdqa xmm14, xmm1
+    pcmpgtb xmm14, xmm4
+    movdqa xmm15, xmm5
+    pcmpgtb xmm15, xmm1
+    pand xmm14, xmm15
+    por xmm13, xmm14
+
+    movdqa xmm14, xmm1
+    pcmpgtb xmm14, xmm6
+    movdqa xmm15, xmm7
+    pcmpgtb xmm15, xmm1
+    pand xmm14, xmm15
+    por xmm13, xmm14
+
+    movdqa xmm14, xmm1
+    pcmpeqb xmm14, xmm8
+    por xmm13, xmm14
+    movdqa xmm14, xmm1
+    pcmpeqb xmm14, xmm9
+    por xmm13, xmm14
+    movdqa xmm14, xmm1
+    pcmpeqb xmm14, xmm2
+    por xmm13, xmm14
+    movdqa xmm14, xmm1
+    pcmpeqb xmm14, xmm3
+    por xmm13, xmm14
+    movdqa xmm14, xmm1
+    pcmpeqb xmm14, xmm10
+    por xmm13, xmm14
+
+    pmovmskb r8d, xmm13
+    xor r8d, 0xffff
+    and r8d, 0xffff
+    jne .Lident_vector_hit
+    add rax, 16
+    jmp .Lident_vector_loop
+.Lident_vector_hit:
+    bsf r8d, r8d
+    add rax, r8
+    ret
 .Lident_loop:
     cmp rax, rsi
     jae .Lident_none
@@ -90,6 +221,23 @@ rbtl_asm_search_non_ident:
 .type rbtl_asm_validate_subset, @function
 rbtl_asm_validate_subset:
     xor rax, rax
+    mov edx, 0x3c3c3c3c
+    movd xmm1, edx
+    pshufd xmm1, xmm1, 0
+.Lvalidate_vector_loop:
+    lea rdx, [rax + 16]
+    cmp rdx, rsi
+    ja .Lvalidate_loop
+    movdqu xmm0, xmmword ptr [rdi + rax]
+    pcmpeqb xmm0, xmm1
+    pmovmskb edx, xmm0
+    test edx, edx
+    jne .Lvalidate_vector_hit
+    add rax, 16
+    jmp .Lvalidate_vector_loop
+.Lvalidate_vector_hit:
+    bsf edx, edx
+    add rax, rdx
 .Lvalidate_loop:
     cmp rax, rsi
     jae .Lvalidate_ok
@@ -102,7 +250,7 @@ rbtl_asm_validate_subset:
     je .Lvalidate_bang
 .Lvalidate_next:
     inc rax
-    jmp .Lvalidate_loop
+    jmp .Lvalidate_vector_loop
 .Lvalidate_bang:
     lea rdx, [rax + 2]
     cmp rdx, rsi
@@ -251,6 +399,34 @@ rbtl_asm_is_closing:
 .type rbtl_asm_count_while2, @function
 rbtl_asm_count_while2:
     xor rax, rax
+    movd xmm1, edx
+    movd xmm2, ecx
+    punpcklbw xmm1, xmm1
+    punpcklwd xmm1, xmm1
+    pshufd xmm1, xmm1, 0
+    punpcklbw xmm2, xmm2
+    punpcklwd xmm2, xmm2
+    pshufd xmm2, xmm2, 0
+.Lcount_while2_vector_loop:
+    lea r8, [rax + 16]
+    cmp r8, rsi
+    ja .Lcount_while2_loop
+    movdqu xmm0, xmmword ptr [rdi + rax]
+    movdqa xmm3, xmm0
+    pcmpeqb xmm0, xmm1
+    pcmpeqb xmm3, xmm2
+    por xmm0, xmm3
+    pmovmskb r8d, xmm0
+    cmp r8d, 0xffff
+    jne .Lcount_while2_vector_hit
+    add rax, 16
+    jmp .Lcount_while2_vector_loop
+.Lcount_while2_vector_hit:
+    xor r8d, 0xffff
+    and r8d, 0xffff
+    bsf r8d, r8d
+    add rax, r8
+    ret
 .Lcount_while2_loop:
     cmp rax, rsi
     jae .Lcount_while2_ret
