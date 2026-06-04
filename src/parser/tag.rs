@@ -72,9 +72,9 @@ impl<'a> Attributes<'a> {
     {
         let key: Bytes = key.into();
 
-        match key.as_bytes() {
-            b"id" => self.id.as_ref().map(Some),
-            b"class" => self.class.as_ref().map(Some),
+        match asm_core::attr_key_kind(key.as_bytes()) {
+            1 => self.id.as_ref().map(Some),
+            2 => self.class.as_ref().map(Some),
             _ => self.raw.get(&key).map(|x| x.as_ref()),
         }
     }
@@ -110,9 +110,9 @@ impl<'a> Attributes<'a> {
     {
         let key: Bytes = key.into();
 
-        match key.as_bytes() {
-            b"id" => self.id.take().map(Some),
-            b"class" => self.class.take().map(Some),
+        match asm_core::attr_key_kind(key.as_bytes()) {
+            1 => self.id.take().map(Some),
+            2 => self.class.take().map(Some),
             _ => self.raw.remove(&key),
         }
     }
@@ -137,9 +137,9 @@ impl<'a> Attributes<'a> {
     {
         let key: Bytes = key.into();
 
-        match key.as_bytes() {
-            b"id" => self.id.take(),
-            b"class" => self.class.take(),
+        match asm_core::attr_key_kind(key.as_bytes()) {
+            1 => self.id.take(),
+            2 => self.class.take(),
             _ => self.raw.get_mut(&key).and_then(mem::take),
         }
     }
@@ -151,9 +151,9 @@ impl<'a> Attributes<'a> {
     {
         let key: Bytes = key.into();
 
-        match key.as_bytes() {
-            b"id" => self.id.as_mut().map(Some),
-            b"class" => self.class.as_mut().map(Some),
+        match asm_core::attr_key_kind(key.as_bytes()) {
+            1 => self.id.as_mut().map(Some),
+            2 => self.class.as_mut().map(Some),
             _ => self.raw.get_mut(&key).map(Option::as_mut),
         }
     }
@@ -167,9 +167,9 @@ impl<'a> Attributes<'a> {
         let key: Bytes = key.into();
         let value = value.map(Into::into);
 
-        match key.as_bytes() {
-            b"id" => self.id = value,
-            b"class" => self.class = value,
+        match asm_core::attr_key_kind(key.as_bytes()) {
+            1 => self.id = value,
+            2 => self.class = value,
             _ => {
                 self.raw
                     .insert(key, value)

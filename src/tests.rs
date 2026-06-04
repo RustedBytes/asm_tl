@@ -522,6 +522,18 @@ mod bytes {
     }
 
     #[test]
+    fn equality() {
+        let x = Bytes::from("hello");
+        let y = Bytes::from(b"hello" as &[u8]);
+
+        assert_eq!(x, Bytes::from("hello"));
+        assert_eq!(x, Bytes::from(b"hello" as &[u8]));
+        assert_eq!(x, y);
+        assert_ne!(x, Bytes::from("hell"));
+        assert_ne!(x, Bytes::from(b"world" as &[u8]));
+    }
+
+    #[test]
     fn as_bytes_borrowed() {
         let xb = Bytes::from(b"hello" as &[u8]);
         assert_eq!(xb.as_bytes_borrowed(), Some(b"hello" as &[u8]));
@@ -1012,6 +1024,22 @@ fn insert_attribute_owned() {
     attr.insert("style", Some(Bytes::try_from(style).unwrap()))
         .unwrap();
     assert_eq!(attr.get("style"), Some(Some(&"some style".into())));
+}
+
+#[test]
+fn attributes_id_class_dispatch() {
+    let mut attr = Attributes::new();
+    attr.insert("id", Some("main")).unwrap();
+    attr.insert("class", Some("one two")).unwrap();
+
+    assert_eq!(attr.get("id").flatten().unwrap(), "main");
+    assert!(attr.contains("class"));
+    assert_eq!(attr.get_mut("class").flatten().unwrap(), "one two");
+    assert_eq!(attr.remove_value("id").unwrap(), Bytes::from("main"));
+    assert_eq!(
+        attr.remove("class").unwrap().unwrap(),
+        Bytes::from("one two")
+    );
 }
 
 #[test]

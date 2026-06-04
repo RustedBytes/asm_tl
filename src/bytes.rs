@@ -9,6 +9,7 @@ use core::{
 #[cfg(feature = "std")]
 use std::borrow::Cow;
 
+use crate::asm_core;
 #[cfg(feature = "std")]
 use crate::errors::SetBytesError;
 
@@ -41,14 +42,14 @@ enum BytesInner {
 impl<'a> PartialEq<str> for Bytes<'a> {
     #[inline]
     fn eq(&self, other: &str) -> bool {
-        self == other.as_bytes()
+        asm_core::bytes_eq(self.as_bytes(), other.as_bytes())
     }
 }
 
 impl<'a> PartialEq<[u8]> for Bytes<'a> {
     #[inline]
     fn eq(&self, other: &[u8]) -> bool {
-        self.as_bytes() == other
+        asm_core::bytes_eq(self.as_bytes(), other)
     }
 }
 
@@ -57,7 +58,7 @@ impl<'a> PartialEq for Bytes<'a> {
     fn eq(&self, other: &Self) -> bool {
         let this = self.as_bytes();
         let that = other.as_bytes();
-        this == that
+        asm_core::bytes_eq(this, that)
     }
 }
 

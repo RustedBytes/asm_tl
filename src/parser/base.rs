@@ -278,15 +278,15 @@ impl<
                 let has_value = value.is_some();
                 let value: Option<Bytes<'a>> = value.map(Into::into);
 
-                if asm_core::bytes_eq(key, b"id") {
-                    attributes.id = value;
-                } else if asm_core::bytes_eq(key, b"class") {
-                    attributes.class = value;
-                } else {
-                    attributes
-                        .raw
-                        .insert(key.into(), value)
-                        .map_err(|_| ParseError::AttributeCapacityExceeded)?;
+                match asm_core::attr_key_kind(key) {
+                    1 => attributes.id = value,
+                    2 => attributes.class = value,
+                    _ => {
+                        attributes
+                            .raw
+                            .insert(key.into(), value)
+                            .map_err(|_| ParseError::AttributeCapacityExceeded)?;
+                    }
                 }
 
                 // Only advance past the delimiter if we read a value.
@@ -535,7 +535,7 @@ impl<
     }
 
     pub(crate) fn parse(&mut self) -> Result<(), ParseError> {
-        if self.stream.len() > u32::MAX as usize {
+        if !asm_core::len_fits_u32(self.stream.len()) {
             return Err(ParseError::InvalidLength);
         }
 

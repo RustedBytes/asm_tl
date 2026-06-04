@@ -827,4 +827,48 @@ rbtl_asm_parser_is_tracking:
     ret
 .size rbtl_asm_parser_is_tracking, .-rbtl_asm_parser_is_tracking
 
+.globl rbtl_asm_attr_key_kind
+.type rbtl_asm_attr_key_kind, @function
+rbtl_asm_attr_key_kind:
+    cmp rsi, 2
+    je .Lattr_key_len2
+    cmp rsi, 5
+    je .Lattr_key_len5
+    xor eax, eax
+    ret
+.Lattr_key_len2:
+    cmp byte ptr [rdi], 'i'
+    jne .Lattr_key_other
+    cmp byte ptr [rdi + 1], 'd'
+    jne .Lattr_key_other
+    mov eax, 1
+    ret
+.Lattr_key_len5:
+    cmp byte ptr [rdi], 'c'
+    jne .Lattr_key_other
+    cmp byte ptr [rdi + 1], 'l'
+    jne .Lattr_key_other
+    cmp byte ptr [rdi + 2], 'a'
+    jne .Lattr_key_other
+    cmp byte ptr [rdi + 3], 's'
+    jne .Lattr_key_other
+    cmp byte ptr [rdi + 4], 's'
+    jne .Lattr_key_other
+    mov eax, 2
+    ret
+.Lattr_key_other:
+    xor eax, eax
+    ret
+.size rbtl_asm_attr_key_kind, .-rbtl_asm_attr_key_kind
+
+.globl rbtl_asm_len_fits_u32
+.type rbtl_asm_len_fits_u32, @function
+rbtl_asm_len_fits_u32:
+    xor eax, eax
+    mov rcx, 4294967295
+    cmp rdi, rcx
+    setbe al
+    ret
+.size rbtl_asm_len_fits_u32, .-rbtl_asm_len_fits_u32
+
 .section .note.GNU-stack,"",@progbits

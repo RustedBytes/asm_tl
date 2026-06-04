@@ -47,6 +47,8 @@ unsafe extern "C" {
     fn rbtl_asm_parser_is_tracking_ids(flags: u8) -> u32;
     fn rbtl_asm_parser_is_tracking_classes(flags: u8) -> u32;
     fn rbtl_asm_parser_is_tracking(flags: u8) -> u32;
+    fn rbtl_asm_attr_key_kind(ptr: *const u8, len: usize) -> u32;
+    fn rbtl_asm_len_fits_u32(len: usize) -> u32;
 }
 
 #[inline]
@@ -211,4 +213,14 @@ pub(crate) fn parser_is_tracking_classes(flags: u8) -> bool {
 #[inline]
 pub(crate) fn parser_is_tracking(flags: u8) -> bool {
     unsafe { rbtl_asm_parser_is_tracking(flags) != 0 }
+}
+
+#[inline]
+pub(crate) fn attr_key_kind(key: &[u8]) -> u32 {
+    unsafe { rbtl_asm_attr_key_kind(key.as_ptr(), key.len()) }
+}
+
+#[inline]
+pub(crate) fn len_fits_u32(len: usize) -> bool {
+    unsafe { rbtl_asm_len_fits_u32(len) != 0 }
 }
