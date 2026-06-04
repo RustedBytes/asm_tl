@@ -782,4 +782,49 @@ rbtl_asm_find_comment_end:
     ret
 .size rbtl_asm_find_comment_end, .-rbtl_asm_find_comment_end
 
+.globl rbtl_asm_parser_flags_valid
+.type rbtl_asm_parser_flags_valid, @function
+rbtl_asm_parser_flags_valid:
+    xor eax, eax
+    cmp dil, 3
+    seta al
+    xor eax, 1
+    ret
+.size rbtl_asm_parser_flags_valid, .-rbtl_asm_parser_flags_valid
+
+.globl rbtl_asm_parser_set_flag
+.type rbtl_asm_parser_set_flag, @function
+rbtl_asm_parser_set_flag:
+    mov eax, edi
+    or al, sil
+    ret
+.size rbtl_asm_parser_set_flag, .-rbtl_asm_parser_set_flag
+
+.globl rbtl_asm_parser_is_tracking_ids
+.type rbtl_asm_parser_is_tracking_ids, @function
+rbtl_asm_parser_is_tracking_ids:
+    xor eax, eax
+    test dil, 1
+    setne al
+    ret
+.size rbtl_asm_parser_is_tracking_ids, .-rbtl_asm_parser_is_tracking_ids
+
+.globl rbtl_asm_parser_is_tracking_classes
+.type rbtl_asm_parser_is_tracking_classes, @function
+rbtl_asm_parser_is_tracking_classes:
+    xor eax, eax
+    test dil, 2
+    setne al
+    ret
+.size rbtl_asm_parser_is_tracking_classes, .-rbtl_asm_parser_is_tracking_classes
+
+.globl rbtl_asm_parser_is_tracking
+.type rbtl_asm_parser_is_tracking, @function
+rbtl_asm_parser_is_tracking:
+    xor eax, eax
+    test dil, dil
+    setne al
+    ret
+.size rbtl_asm_parser_is_tracking, .-rbtl_asm_parser_is_tracking
+
 .section .note.GNU-stack,"",@progbits

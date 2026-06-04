@@ -2,6 +2,7 @@ use crate::Bytes;
 use crate::InnerNodeHandle;
 #[cfg(feature = "std")]
 use crate::ParserOptions;
+use crate::asm_core;
 use crate::errors::ParseError;
 #[cfg(feature = "std")]
 use crate::inline::vec::InlineVecIter;
@@ -103,7 +104,10 @@ impl<
                 .enumerate()
                 .find(|(_, node)| {
                     node.as_tag().is_some_and(|tag| {
-                        tag._attributes.id.as_ref().is_some_and(|x| x.eq(&bytes))
+                        tag._attributes
+                            .id
+                            .as_ref()
+                            .is_some_and(|x| asm_core::bytes_eq(x.as_bytes(), bytes.as_bytes()))
                     })
                 })
                 .map(|(id, _)| NodeHandle::new(id as InnerNodeHandle))

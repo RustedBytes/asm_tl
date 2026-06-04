@@ -56,9 +56,12 @@ impl<'a, const MAX_SELECTOR_NODES: usize> Selector<'a, MAX_SELECTOR_NODES> {
             Self::Tag(tag) => node
                 .as_tag()
                 .is_some_and(|t| asm_core::bytes_eq(t._name.as_bytes(), tag)),
-            Self::Id(id) => node
-                .as_tag()
-                .is_some_and(|t| t._attributes.id == Some((*id).into())),
+            Self::Id(id) => node.as_tag().is_some_and(|t| {
+                t._attributes
+                    .id
+                    .as_ref()
+                    .is_some_and(|attr| asm_core::bytes_eq(attr.as_bytes(), id))
+            }),
             Self::Class(class) => node
                 .as_tag()
                 .is_some_and(|t| t._attributes.is_class_member(*class)),

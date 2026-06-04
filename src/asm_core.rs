@@ -42,6 +42,11 @@ unsafe extern "C" {
     fn rbtl_asm_count_ident(ptr: *const u8, len: usize) -> usize;
     fn rbtl_asm_is_quote(byte: u8) -> u32;
     fn rbtl_asm_find_comment_end(ptr: *const u8, len: usize) -> usize;
+    fn rbtl_asm_parser_flags_valid(flags: u8) -> u32;
+    fn rbtl_asm_parser_set_flag(flags: u8, flag: u8) -> u8;
+    fn rbtl_asm_parser_is_tracking_ids(flags: u8) -> u32;
+    fn rbtl_asm_parser_is_tracking_classes(flags: u8) -> u32;
+    fn rbtl_asm_parser_is_tracking(flags: u8) -> u32;
 }
 
 #[inline]
@@ -181,4 +186,29 @@ pub(crate) fn is_quote(byte: u8) -> bool {
 pub(crate) fn find_comment_end(haystack: &[u8]) -> Option<usize> {
     let idx = unsafe { rbtl_asm_find_comment_end(haystack.as_ptr(), haystack.len()) };
     (idx <= haystack.len()).then_some(idx)
+}
+
+#[inline]
+pub(crate) fn parser_flags_valid(flags: u8) -> bool {
+    unsafe { rbtl_asm_parser_flags_valid(flags) != 0 }
+}
+
+#[inline]
+pub(crate) fn parser_set_flag(flags: u8, flag: u8) -> u8 {
+    unsafe { rbtl_asm_parser_set_flag(flags, flag) }
+}
+
+#[inline]
+pub(crate) fn parser_is_tracking_ids(flags: u8) -> bool {
+    unsafe { rbtl_asm_parser_is_tracking_ids(flags) != 0 }
+}
+
+#[inline]
+pub(crate) fn parser_is_tracking_classes(flags: u8) -> bool {
+    unsafe { rbtl_asm_parser_is_tracking_classes(flags) != 0 }
+}
+
+#[inline]
+pub(crate) fn parser_is_tracking(flags: u8) -> bool {
+    unsafe { rbtl_asm_parser_is_tracking(flags) != 0 }
 }

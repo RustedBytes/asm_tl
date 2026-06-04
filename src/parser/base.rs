@@ -278,14 +278,16 @@ impl<
                 let has_value = value.is_some();
                 let value: Option<Bytes<'a>> = value.map(Into::into);
 
-                match key {
-                    b"id" => attributes.id = value,
-                    b"class" => attributes.class = value,
-                    _ => attributes
+                if asm_core::bytes_eq(key, b"id") {
+                    attributes.id = value;
+                } else if asm_core::bytes_eq(key, b"class") {
+                    attributes.class = value;
+                } else {
+                    attributes
                         .raw
                         .insert(key.into(), value)
-                        .map_err(|_| ParseError::AttributeCapacityExceeded)?,
-                };
+                        .map_err(|_| ParseError::AttributeCapacityExceeded)?;
+                }
 
                 // Only advance past the delimiter if we read a value.
                 let Some(cur) = self.stream.current_cpy() else {
@@ -338,7 +340,9 @@ impl<
             .last()
             .and_then(|last_handle| last_handle.get(self))
             .and_then(|last_item| last_item.as_tag())
-            .is_some_and(|last_tag| last_tag.name() == closing_tag_name);
+            .is_some_and(|last_tag| {
+                asm_core::bytes_eq(last_tag.name().as_bytes(), closing_tag_name)
+            });
 
         if !closing_tag_matches_parent {
             return Ok(());

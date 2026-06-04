@@ -89,6 +89,30 @@ fn get_element_by_id_tracking() {
 }
 
 #[test]
+fn parser_options_raw_flags() {
+    assert_eq!(ParserOptions::from_raw_checked(0).unwrap().to_raw(), 0);
+    assert_eq!(
+        ParserOptions::default()
+            .track_ids()
+            .track_classes()
+            .to_raw(),
+        3
+    );
+    assert!(ParserOptions::from_raw_checked(3).unwrap().is_tracking());
+    assert!(
+        ParserOptions::from_raw_checked(1)
+            .unwrap()
+            .is_tracking_ids()
+    );
+    assert!(
+        ParserOptions::from_raw_checked(2)
+            .unwrap()
+            .is_tracking_classes()
+    );
+    assert!(ParserOptions::from_raw_checked(4).is_none());
+}
+
+#[test]
 fn get_element_by_class_name_default() {
     let dom = parse(
         "<div></div><p class=\"a b\">hey</p><p></p>",
@@ -713,6 +737,18 @@ mod query_selector {
         let el = force_as_tag(selector.next().and_then(|x| x.get(parser)).unwrap());
 
         assert_eq!(dom.nodes().len(), 3);
+        assert_eq!(el.inner_text(parser), "hello");
+    }
+
+    #[test]
+    fn query_selector_id() {
+        let input = "<div><p id=\"hit\">hello</p><p id=\"miss\">no</p></div>";
+        let dom = parse(input, ParserOptions::default()).unwrap();
+        let parser = dom.parser();
+        let mut selector = dom.query_selector("#hit").unwrap();
+        let el = force_as_tag(selector.next().and_then(|x| x.get(parser)).unwrap());
+
+        assert_eq!(selector.count(), 0);
         assert_eq!(el.inner_text(parser), "hello");
     }
 
