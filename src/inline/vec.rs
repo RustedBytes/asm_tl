@@ -3,7 +3,7 @@ use core::mem::MaybeUninit;
 use core::ops::Index;
 use core::ptr;
 
-use crate::{ParseError, asm_core};
+use crate::{ParseError, asm_core, parser::NodeHandle};
 
 /// A wrapper around a `Vec<T>` that lives on the stack if it is small enough.
 #[derive(Debug, Clone)]
@@ -111,6 +111,14 @@ impl<T, const N: usize> InlineVec<T, N> {
     #[inline]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         self.0.as_mut_slice()
+    }
+}
+
+impl<const N: usize> InlineVec<NodeHandle, N> {
+    /// Pushes a node handle through a specialized assembly-checked capacity path.
+    #[inline]
+    pub(crate) fn push_handle(&mut self, value: NodeHandle) -> Result<(), ParseError> {
+        self.0.push_handle(value)
     }
 }
 
@@ -338,6 +346,42 @@ impl<T, const N: usize> InlineVecInner<T, N> {
         {
             false
         }
+    }
+}
+
+impl<const N: usize> InlineVecInner<NodeHandle, N> {
+    fn push_handle(&mut self, value: NodeHandle) -> Result<(), ParseError> {
+        let (array, len) = match self {
+            Self::Inline { data, len } => (data, len),
+            #[cfg(feature = "std")]
+            Self::Heap(vec) => {
+                vec.push(value);
+                return Ok(());
+            }
+        };
+
+        if asm_core::usize_ge(*len, N) {
+            #[cfg(not(feature = "std"))]
+            {
+                return Err(ParseError::ChildCapacityExceeded);
+            }
+
+            #[cfg(feature = "std")]
+            {
+                let mut vec = Vec::with_capacity(*len + 1);
+                for element in array.iter_mut().take(*len) {
+                    let element = core::mem::replace(element, MaybeUninit::uninit());
+                    vec.push(unsafe { element.assume_init() });
+                }
+                vec.push(value);
+                unsafe { ptr::write(self, InlineVecInner::Heap(vec)) };
+            }
+        } else {
+            array[*len].write(value);
+            *len += 1;
+        }
+
+        Ok(())
     }
 }
 

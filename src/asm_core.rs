@@ -58,6 +58,16 @@ unsafe extern "C" {
     fn rbtl_asm_usize_min(left: usize, right: usize) -> usize;
     fn rbtl_asm_usize_add(left: usize, right: usize) -> usize;
     fn rbtl_asm_usize_sub_one(value: usize) -> usize;
+    fn rbtl_asm_html_event_kind(ptr: *const u8, len: usize, idx: usize) -> u32;
+    fn rbtl_asm_next_ascii_token(
+        ptr: *const u8,
+        len: usize,
+        idx: usize,
+        out_start: *mut usize,
+        out_len: *mut usize,
+    ) -> usize;
+    #[cfg(feature = "std")]
+    fn rbtl_asm_simple_selector_kind(ptr: *const u8, len: usize, out_tag_len: *mut usize) -> u32;
 }
 
 #[inline]
@@ -277,4 +287,35 @@ pub(crate) fn usize_add(left: usize, right: usize) -> usize {
 #[inline]
 pub(crate) fn usize_sub_one(value: usize) -> usize {
     unsafe { rbtl_asm_usize_sub_one(value) }
+}
+
+#[inline]
+pub(crate) fn html_event_kind(haystack: &[u8], idx: usize) -> u32 {
+    unsafe { rbtl_asm_html_event_kind(haystack.as_ptr(), haystack.len(), idx) }
+}
+
+#[inline]
+pub(crate) fn next_ascii_token(haystack: &[u8], idx: usize) -> Option<(usize, usize, usize)> {
+    let mut start = 0;
+    let mut len = 0;
+    let next = unsafe {
+        rbtl_asm_next_ascii_token(
+            haystack.as_ptr(),
+            haystack.len(),
+            idx,
+            &mut start,
+            &mut len,
+        )
+    };
+
+    (next <= haystack.len()).then_some((start, len, next))
+}
+
+#[cfg(feature = "std")]
+#[inline]
+pub(crate) fn simple_selector_kind(input: &[u8]) -> (u32, usize) {
+    let mut tag_len = 0;
+    let kind =
+        unsafe { rbtl_asm_simple_selector_kind(input.as_ptr(), input.len(), &mut tag_len) };
+    (kind, tag_len)
 }

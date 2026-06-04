@@ -1025,4 +1025,207 @@ rbtl_asm_usize_sub_one:
     ret
 .size rbtl_asm_usize_sub_one, .-rbtl_asm_usize_sub_one
 
+.globl rbtl_asm_html_event_kind
+.type rbtl_asm_html_event_kind, @function
+rbtl_asm_html_event_kind:
+    xor eax, eax
+    cmp rdx, rsi
+    jae .Lhtml_event_ret
+    cmp byte ptr [rdi + rdx], '<'
+    jne .Lhtml_event_text
+    inc rdx
+.Lhtml_event_skip_ws:
+    cmp rdx, rsi
+    jae .Lhtml_event_start
+    mov cl, byte ptr [rdi + rdx]
+    cmp cl, ' '
+    je .Lhtml_event_skip_one
+    cmp cl, 10
+    je .Lhtml_event_skip_one
+    jmp .Lhtml_event_classify
+.Lhtml_event_skip_one:
+    inc rdx
+    jmp .Lhtml_event_skip_ws
+.Lhtml_event_classify:
+    cmp cl, '/'
+    je .Lhtml_event_end
+    cmp cl, '!'
+    je .Lhtml_event_bang
+.Lhtml_event_start:
+    mov eax, 2
+    ret
+.Lhtml_event_text:
+    mov eax, 1
+    ret
+.Lhtml_event_end:
+    mov eax, 3
+    ret
+.Lhtml_event_bang:
+    mov eax, 4
+.Lhtml_event_ret:
+    ret
+.size rbtl_asm_html_event_kind, .-rbtl_asm_html_event_kind
+
+.globl rbtl_asm_next_ascii_token
+.type rbtl_asm_next_ascii_token, @function
+rbtl_asm_next_ascii_token:
+    mov rax, rdx
+.Lnext_token_skip:
+    cmp rax, rsi
+    jae .Lnext_token_none
+    mov r9b, byte ptr [rdi + rax]
+    cmp r9b, ' '
+    je .Lnext_token_skip_one
+    cmp r9b, 9
+    jb .Lnext_token_start
+    cmp r9b, 13
+    jbe .Lnext_token_skip_one
+    jmp .Lnext_token_start
+.Lnext_token_skip_one:
+    inc rax
+    jmp .Lnext_token_skip
+.Lnext_token_start:
+    mov r10, rax
+.Lnext_token_scan:
+    cmp rax, rsi
+    jae .Lnext_token_emit
+    mov r9b, byte ptr [rdi + rax]
+    cmp r9b, ' '
+    je .Lnext_token_emit
+    cmp r9b, 9
+    jb .Lnext_token_scan_one
+    cmp r9b, 13
+    jbe .Lnext_token_emit
+.Lnext_token_scan_one:
+    inc rax
+    jmp .Lnext_token_scan
+.Lnext_token_emit:
+    mov qword ptr [rcx], r10
+    mov r9, rax
+    sub r9, r10
+    mov qword ptr [r8], r9
+    ret
+.Lnext_token_none:
+    lea rax, [rsi + 1]
+    ret
+.size rbtl_asm_next_ascii_token, .-rbtl_asm_next_ascii_token
+
+.globl rbtl_asm_simple_selector_kind
+.type rbtl_asm_simple_selector_kind, @function
+rbtl_asm_simple_selector_kind:
+    test rsi, rsi
+    je .Lsimple_selector_none
+    mov qword ptr [rdx], 0
+
+    cmp rsi, 1
+    jne .Lsimple_selector_not_all
+    cmp byte ptr [rdi], '*'
+    jne .Lsimple_selector_not_all
+    mov eax, 1
+    ret
+
+.Lsimple_selector_not_all:
+    mov r8b, byte ptr [rdi]
+    cmp r8b, '#'
+    je .Lsimple_selector_leading_id
+    cmp r8b, '.'
+    je .Lsimple_selector_leading_class
+
+    xor rax, rax
+.Lsimple_selector_tag_scan:
+    cmp rax, rsi
+    jae .Lsimple_selector_tag_only
+    mov r9b, byte ptr [rdi + rax]
+    call .Lsimple_selector_is_ident
+    test r10d, r10d
+    je .Lsimple_selector_tag_done
+    inc rax
+    jmp .Lsimple_selector_tag_scan
+.Lsimple_selector_tag_only:
+    test rax, rax
+    je .Lsimple_selector_none
+    mov qword ptr [rdx], rax
+    mov eax, 2
+    ret
+.Lsimple_selector_tag_done:
+    test rax, rax
+    je .Lsimple_selector_none
+    mov r11, rax
+    inc rax
+    cmp rax, rsi
+    jae .Lsimple_selector_none
+    mov r8b, byte ptr [rdi + r11]
+    cmp r8b, '#'
+    je .Lsimple_selector_tag_id_rest
+    cmp r8b, '.'
+    je .Lsimple_selector_tag_class_rest
+    jmp .Lsimple_selector_none
+
+.Lsimple_selector_leading_id:
+    mov rax, 1
+    mov r11d, 3
+    jmp .Lsimple_selector_rest
+.Lsimple_selector_leading_class:
+    mov rax, 1
+    mov r11d, 4
+    jmp .Lsimple_selector_rest
+.Lsimple_selector_tag_id_rest:
+    mov qword ptr [rdx], r11
+    mov r11d, 5
+    jmp .Lsimple_selector_rest
+.Lsimple_selector_tag_class_rest:
+    mov qword ptr [rdx], r11
+    mov r11d, 6
+
+.Lsimple_selector_rest:
+    cmp rax, rsi
+    jae .Lsimple_selector_none
+.Lsimple_selector_rest_loop:
+    cmp rax, rsi
+    jae .Lsimple_selector_emit_rest
+    mov r9b, byte ptr [rdi + rax]
+    call .Lsimple_selector_is_ident
+    test r10d, r10d
+    je .Lsimple_selector_none
+    inc rax
+    jmp .Lsimple_selector_rest_loop
+.Lsimple_selector_emit_rest:
+    mov eax, r11d
+    ret
+
+.Lsimple_selector_is_ident:
+    xor r10d, r10d
+    cmp r9b, '0'
+    jb .Lsimple_selector_ident_symbols
+    cmp r9b, '9'
+    jbe .Lsimple_selector_ident_yes
+    cmp r9b, 'A'
+    jb .Lsimple_selector_ident_symbols
+    cmp r9b, 'Z'
+    jbe .Lsimple_selector_ident_yes
+    cmp r9b, 'a'
+    jb .Lsimple_selector_ident_symbols
+    cmp r9b, 'z'
+    jbe .Lsimple_selector_ident_yes
+.Lsimple_selector_ident_symbols:
+    cmp r9b, '-'
+    je .Lsimple_selector_ident_yes
+    cmp r9b, '_'
+    je .Lsimple_selector_ident_yes
+    cmp r9b, '/'
+    je .Lsimple_selector_ident_yes
+    cmp r9b, ':'
+    je .Lsimple_selector_ident_yes
+    cmp r9b, '+'
+    je .Lsimple_selector_ident_yes
+    ret
+.Lsimple_selector_ident_yes:
+    mov r10d, 1
+    ret
+
+.Lsimple_selector_none:
+    xor eax, eax
+    ret
+.size rbtl_asm_simple_selector_kind, .-rbtl_asm_simple_selector_kind
+
 .section .note.GNU-stack,"",@progbits

@@ -97,7 +97,7 @@ impl<
         let parser = self.parser();
 
         if parser.options.is_tracking_ids() {
-            parser.ids.get(&bytes).copied()
+            parser.ids.get_bytes(&bytes).copied()
         } else {
             self.nodes()
                 .iter()
@@ -208,7 +208,7 @@ impl<
         if parser.options.is_tracking_classes() {
             parser
                 .classes
-                .get(&Bytes::from(id.as_bytes()))
+                .get_bytes(&Bytes::from(id.as_bytes()))
                 .map(|handles| ClassNameIterator::Tracked(handles.iter()))
                 .unwrap_or_else(|| ClassNameIterator::Empty)
         } else {

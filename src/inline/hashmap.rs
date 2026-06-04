@@ -3,7 +3,7 @@ use core::hash::Hash;
 use core::mem::MaybeUninit;
 use core::ptr;
 
-use crate::ParseError;
+use crate::{Bytes, ParseError, asm_core};
 
 /// Similar to InlineVec, this structure will use an array
 /// if it is small enough to live on the stack, otherwise
@@ -98,6 +98,22 @@ where
     #[inline]
     pub fn contains_key(&self, key: &K) -> bool {
         self.0.contains_key(key)
+    }
+}
+
+impl<'a, V, const N: usize> InlineHashMap<Bytes<'a>, V, N> {
+    /// Returns a reference to the value corresponding to a byte key using the
+    /// assembly byte comparator on inline storage.
+    #[inline]
+    pub(crate) fn get_bytes(&self, key: &Bytes<'a>) -> Option<&V> {
+        self.0.get_bytes(key)
+    }
+
+    /// Returns a mutable reference to the value corresponding to a byte key using the
+    /// assembly byte comparator on inline storage.
+    #[inline]
+    pub(crate) fn get_bytes_mut(&mut self, key: &Bytes<'a>) -> Option<&mut V> {
+        self.0.get_bytes_mut(key)
     }
 }
 
@@ -336,6 +352,40 @@ impl<K: Eq + Hash, V, const N: usize> InlineHashMapInner<K, V, N> {
             },
             #[cfg(feature = "std")]
             Self::Heap(map) => map.contains_key(k),
+        }
+    }
+}
+
+impl<'a, V, const N: usize> InlineHashMapInner<Bytes<'a>, V, N> {
+    fn get_bytes<'m>(&'m self, k: &Bytes<'a>) -> Option<&'m V> {
+        match self {
+            Self::Inline { data, len } => {
+                for element in data.iter().take(*len) {
+                    let (key, value) = unsafe { &*element.as_ptr() };
+                    if asm_core::bytes_eq(key.as_bytes(), k.as_bytes()) {
+                        return Some(value);
+                    }
+                }
+                None
+            }
+            #[cfg(feature = "std")]
+            Self::Heap(map) => map.get(k),
+        }
+    }
+
+    fn get_bytes_mut<'m>(&'m mut self, k: &Bytes<'a>) -> Option<&'m mut V> {
+        match self {
+            Self::Inline { data, len } => {
+                for element in data.iter_mut().take(*len) {
+                    let (key, value) = unsafe { &mut *element.as_mut_ptr() };
+                    if asm_core::bytes_eq(key.as_bytes(), k.as_bytes()) {
+                        return Some(value);
+                    }
+                }
+                None
+            }
+            #[cfg(feature = "std")]
+            Self::Heap(map) => map.get_mut(k),
         }
     }
 }

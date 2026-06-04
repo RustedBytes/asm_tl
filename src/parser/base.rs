@@ -64,36 +64,22 @@ fn push_vec<T, const N: usize>(
     vec.push(value).map_err(|_| err)
 }
 
-#[cfg(feature = "std")]
-fn insert_map<K, V, const N: usize>(
-    map: &mut StorageMap<K, V, N>,
-    key: K,
-    value: V,
+#[inline]
+fn push_class_handle<const N: usize>(
+    vec: &mut ClassVec<N>,
+    value: NodeHandle,
     err: ParseError,
-) -> Result<Option<V>, ParseError>
-where
-    K: core::hash::Hash + Eq,
-{
-    if let Some(slot) = map.get_mut(&key) {
-        let old = core::mem::replace(slot, value);
-        Ok(Some(old))
-    } else {
-        map.insert(key, value).map_err(|_| err)?;
-        Ok(None)
-    }
+) -> Result<(), ParseError> {
+    vec.push_handle(value).map_err(|_| err)
 }
 
-#[cfg(not(feature = "std"))]
-fn insert_map<K, V, const N: usize>(
-    map: &mut StorageMap<K, V, N>,
-    key: K,
+fn insert_bytes_map<'a, V, const N: usize>(
+    map: &mut StorageMap<Bytes<'a>, V, N>,
+    key: Bytes<'a>,
     value: V,
     err: ParseError,
-) -> Result<Option<V>, ParseError>
-where
-    K: core::hash::Hash + Eq,
-{
-    if let Some(slot) = map.get_mut(&key) {
+) -> Result<Option<V>, ParseError> {
+    if let Some(slot) = map.get_bytes_mut(&key) {
         let old = core::mem::replace(slot, value);
         Ok(Some(old))
     } else {
@@ -319,7 +305,7 @@ impl<
                 .unwrap();
 
             last._children
-                .push(handle)
+                .push_handle(handle)
                 .map_err(|_| ParseError::ChildCapacityExceeded)?;
         } else {
             push_vec::<NodeHandle, MAX_ROOTS>(
@@ -373,36 +359,38 @@ impl<
             );
 
             if let (true, Some(bytes)) = (track_classes, &tag._attributes.class) {
-                let s = bytes
-                    .as_bytes_borrowed()
-                    .and_then(|x| core::str::from_utf8(x).ok())
-                    .map(|x| x.split_ascii_whitespace());
-
-                if let Some(s) = s {
-                    for class in s {
-                        let key = Bytes::from(class);
-                        if let Some(handles) = self.classes.get_mut(&key) {
-                            handles
-                                .push(handle)
-                                .map_err(|_| ParseError::ClassCapacityExceeded)?;
+                if let Some(class_bytes) = bytes.as_bytes_borrowed() {
+                    let mut idx = 0;
+                    while let Some((start, len, next)) = asm_core::next_ascii_token(class_bytes, idx)
+                    {
+                        let key = Bytes::from(&class_bytes[start..start + len]);
+                        if let Some(handles) = self.classes.get_bytes_mut(&key) {
+                            push_class_handle::<MAX_NODES>(
+                                handles,
+                                handle,
+                                ParseError::ClassCapacityExceeded,
+                            )?;
                         } else {
                             let mut handles = ClassVec::<MAX_NODES>::new();
-                            handles
-                                .push(handle)
-                                .map_err(|_| ParseError::ClassCapacityExceeded)?;
-                            insert_map::<Bytes<'a>, ClassVec<MAX_NODES>, MAX_CLASSES>(
+                            push_class_handle::<MAX_NODES>(
+                                &mut handles,
+                                handle,
+                                ParseError::ClassCapacityExceeded,
+                            )?;
+                            insert_bytes_map::<ClassVec<MAX_NODES>, MAX_CLASSES>(
                                 &mut self.classes,
                                 key,
                                 handles,
                                 ParseError::ClassCapacityExceeded,
                             )?;
                         }
+                        idx = next;
                     }
                 }
             }
 
             if let (true, Some(bytes)) = (track_ids, &tag._attributes.id) {
-                insert_map::<Bytes<'a>, NodeHandle, MAX_IDS>(
+                insert_bytes_map::<NodeHandle, MAX_IDS>(
                     &mut self.ids,
                     bytes.clone(),
                     handle,
@@ -518,16 +506,16 @@ impl<
 
     pub(crate) fn parse_single(&mut self) -> Result<Option<()>, ParseError> {
         loop {
-            if self.stream.is_eof() {
-                return Ok(None);
-            }
-
-            if asm_core::byte_at_eq(self.stream.data(), self.stream.idx, b'<') {
-                self.parse_tag()?;
-            } else {
-                let raw = Node::Raw(self.read_to(b'<').into());
-                let handle = self.register_tag(raw)?;
-                self.add_to_parent(handle)?;
+            match asm_core::html_event_kind(self.stream.data(), self.stream.idx) {
+                0 => return Ok(None),
+                1 => {
+                    let raw = Node::Raw(self.read_to(b'<').into());
+                    let handle = self.register_tag(raw)?;
+                    self.add_to_parent(handle)?;
+                }
+                _ => {
+                    self.parse_tag()?;
+                }
             }
         }
     }

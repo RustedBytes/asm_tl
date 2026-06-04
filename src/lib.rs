@@ -114,11 +114,33 @@ pub fn parse<
 /// ```
 #[cfg(feature = "std")]
 pub fn parse_query_selector(input: &str) -> Option<Selector<'_>> {
-    if asm_core::selector_kind(input.as_bytes()) == 0 {
+    let bytes = input.as_bytes();
+    let (simple_kind, tag_len) = asm_core::simple_selector_kind(bytes);
+    match simple_kind {
+        1 => return Some(Selector::All),
+        2 => return Some(Selector::Tag(bytes)),
+        3 => return Some(Selector::Id(&bytes[1..])),
+        4 => return Some(Selector::Class(&bytes[1..])),
+        5 => {
+            return Some(Selector::And(
+                Box::new(Selector::Tag(&bytes[..tag_len])),
+                Box::new(Selector::Id(&bytes[tag_len + 1..])),
+            ));
+        }
+        6 => {
+            return Some(Selector::And(
+                Box::new(Selector::Tag(&bytes[..tag_len])),
+                Box::new(Selector::Class(&bytes[tag_len + 1..])),
+            ));
+        }
+        _ => {}
+    }
+
+    if asm_core::selector_kind(bytes) == 0 {
         return None;
     }
 
-    let selector = queryselector::Parser::new(input.as_bytes()).selector()?;
+    let selector = queryselector::Parser::new(bytes).selector()?;
     Some(selector)
 }
 
