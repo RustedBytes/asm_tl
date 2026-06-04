@@ -1,0 +1,55 @@
+[package]
+name = "rustedbytes-tl"
+version = "0.2.0"
+authors = ["y21", "Yehor Smoliakov"]
+edition = "2024"
+license = "MIT"
+description = "Fast HTML parser written in pure Rust"
+repository = "https://github.com/RustedBytes/rustedbytes-tl"
+homepage = "https://github.com/RustedBytes/rustedbytes-tl"
+readme = "README.md"
+documentation = "https://docs.rs/rustedbytes-tl"
+keywords = ["html", "parser"]
+categories = ["parser-implementations", "parsing"]
+exclude = [".github/*"]
+
+# for fuzzing and benchmarking internals, we need to make them public so that they can be accessed from outside testing crates
+# users of the library should never use these directly
+[features]
+default = []
+std = ["memchr/std"]
+portable-simd = []
+__INTERNALS_DO_NOT_USE = []
+
+[dependencies]
+memchr = { version = "2.8", default-features = false }
+
+[build-dependencies]
+cc = "1"
+
+[dev-dependencies]
+criterion = { version = "0.3", features = ["html_reports"] }
+
+[[bench]]
+name = "tl"
+harness = false
+
+[lib]
+name = "tl"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+incremental = false
+debug = false
+overflow-checks = false
+
+[profile.bench]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+incremental = false
+debug = false
+overflow-checks = false
