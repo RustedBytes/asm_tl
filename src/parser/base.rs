@@ -6,7 +6,7 @@ use super::{
 use crate::InnerNodeHandle;
 use crate::asm_core::{self, AsmAttrRecord, AsmNodeRecord};
 use crate::inline::hashmap::InlineHashMap;
-use crate::{ParseError, bytes::Bytes, inline::vec::InlineVec, simd};
+use crate::{ParseError, bytes::Bytes, inline::vec::InlineVec};
 use crate::{ParserOptions, stream::Stream};
 use core::mem::MaybeUninit;
 
@@ -153,7 +153,7 @@ impl<
         let start = self.stream.idx;
         let bytes = &self.stream.data()[start..];
 
-        let end = simd::find(bytes, needle).unwrap_or_else(|| self.stream.len() - start);
+        let end = asm_core::find(bytes, needle).unwrap_or_else(|| self.stream.len() - start);
 
         self.stream.idx += end;
         self.stream.slice(start, start + end)
@@ -165,7 +165,7 @@ impl<
 
         // If we do not find any characters that are not identifiers
         // then we are probably at the end of the stream
-        let end = simd::search_non_ident(bytes).unwrap_or_else(|| self.stream.len() - start);
+        let end = asm_core::search_non_ident(bytes).unwrap_or_else(|| self.stream.len() - start);
 
         // If we don't find any identifier characters, return `None`.
         if end == 0 {
@@ -213,7 +213,7 @@ impl<
                 None => return Ok(None),
             };
 
-            if simd::is_closing(cur) {
+            if asm_core::is_closing(cur) {
                 break;
             }
 
@@ -236,7 +236,7 @@ impl<
                 let Some(cur) = self.stream.current_cpy() else {
                     return Ok(None);
                 };
-                if has_value && !simd::is_closing(cur) {
+                if has_value && !asm_core::is_closing(cur) {
                     self.stream.advance();
                 }
             } else {
@@ -377,12 +377,12 @@ impl<
 
             self.skip_whitespaces();
 
-            if simd::matches_case_insensitive(tag, *b"doctype") {
+            if asm_core::matches_case_insensitive_exact(tag, *b"doctype") {
                 let Some(doctype) = self.read_ident() else {
                     return Ok(None);
                 };
 
-                let html5 = simd::matches_case_insensitive(doctype, *b"html");
+                let html5 = asm_core::matches_case_insensitive_exact(doctype, *b"html");
 
                 if html5 {
                     self.version = Some(HTMLVersion::HTML5);

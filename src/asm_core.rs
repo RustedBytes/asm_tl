@@ -176,6 +176,25 @@ pub(crate) fn search_non_ident(haystack: &[u8]) -> Option<usize> {
     (idx != haystack.len()).then_some(idx)
 }
 
+#[allow(dead_code)]
+#[inline]
+pub(crate) fn find3(haystack: &[u8], needle: [u8; 3]) -> Option<usize> {
+    memchr::memchr3(needle[0], needle[1], needle[2], haystack)
+}
+
+#[inline]
+pub(crate) fn find(haystack: &[u8], needle: u8) -> Option<usize> {
+    memchr::memchr(needle, haystack)
+}
+
+#[inline]
+pub(crate) fn matches_case_insensitive_exact<const N: usize>(
+    haystack: &[u8],
+    needle: [u8; N],
+) -> bool {
+    haystack.len() == N && matches_case_insensitive(haystack, &needle)
+}
+
 #[inline]
 fn is_ident_byte(byte: u8) -> bool {
     byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'/' | b':' | b'+')

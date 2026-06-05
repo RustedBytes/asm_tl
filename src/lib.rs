@@ -13,14 +13,7 @@ pub mod queryselector;
 mod stream;
 #[cfg(test)]
 mod tests;
-mod util;
 mod vdom;
-
-#[doc(hidden)]
-#[cfg(feature = "__INTERNALS_DO_NOT_USE")]
-pub mod simd;
-#[cfg(not(feature = "__INTERNALS_DO_NOT_USE"))]
-mod simd;
 
 pub use bytes::Bytes;
 pub use errors::ParseError;
@@ -124,6 +117,12 @@ pub fn parse_query_selector(input: &str) -> Option<Selector<'_>> {
 /// It should not be possible to cause UB in its current form and might become a safe function in the future.
 pub unsafe fn parse_owned(input: String, options: ParserOptions) -> Result<VDomGuard, ParseError> {
     VDomGuard::parse(input, options)
+}
+
+#[doc(hidden)]
+#[cfg(feature = "__INTERNALS_DO_NOT_USE")]
+pub fn __find_byte(haystack: &[u8], needle: u8) -> Option<usize> {
+    asm_core::find(haystack, needle)
 }
 
 /// Runs the x86_64 assembly document scanner and returns emitted record counts.
