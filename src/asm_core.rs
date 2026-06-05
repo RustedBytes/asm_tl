@@ -63,17 +63,8 @@ unsafe extern "C" {
         out_start: *mut usize,
         out_len: *mut usize,
     ) -> usize;
-    fn rbtl_asm_parse_attr(
-        ptr: *const u8,
-        len: usize,
-        idx: usize,
-        out: *mut AsmAttr,
-    ) -> u32;
-    fn rbtl_asm_parse_document(
-        ptr: *const u8,
-        len: usize,
-        out: *mut AsmParseOutput,
-    ) -> u32;
+    fn rbtl_asm_parse_attr(ptr: *const u8, len: usize, idx: usize, out: *mut AsmAttr) -> u32;
+    fn rbtl_asm_parse_document(ptr: *const u8, len: usize, out: *mut AsmParseOutput) -> u32;
     fn rbtl_asm_simple_selector_kind(ptr: *const u8, len: usize, out_tag_len: *mut usize) -> u32;
 }
 
@@ -180,8 +171,7 @@ pub(crate) fn search_non_ident(haystack: &[u8]) -> Option<usize> {
 
 #[inline]
 fn is_ident_byte(byte: u8) -> bool {
-    byte.is_ascii_alphanumeric()
-        || matches!(byte, b'-' | b'_' | b'/' | b':' | b'+')
+    byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'/' | b':' | b'+')
 }
 
 #[inline]
@@ -317,13 +307,10 @@ pub(crate) fn find_comment_end(haystack: &[u8]) -> Option<usize> {
 pub(crate) fn attr_key_kind(key: &[u8]) -> u32 {
     match key.len() {
         2 => (key == b"id") as u32,
-        5 => {
-            if key == b"class" {
+        5
+            if key == b"class" => {
                 2
-            } else {
-                0
             }
-        }
         _ => 0,
     }
 }
@@ -388,13 +375,7 @@ pub(crate) fn scan_html_event(haystack: &[u8], idx: usize) -> (u32, usize, usize
     let mut start = 0;
     let mut len = 0;
     let kind = unsafe {
-        rbtl_asm_scan_html_event(
-            haystack.as_ptr(),
-            haystack.len(),
-            idx,
-            &mut start,
-            &mut len,
-        )
+        rbtl_asm_scan_html_event(haystack.as_ptr(), haystack.len(), idx, &mut start, &mut len)
     };
     (kind, start, len)
 }
@@ -404,13 +385,7 @@ pub(crate) fn next_ascii_token(haystack: &[u8], idx: usize) -> Option<(usize, us
     let mut start = 0;
     let mut len = 0;
     let next = unsafe {
-        rbtl_asm_next_ascii_token(
-            haystack.as_ptr(),
-            haystack.len(),
-            idx,
-            &mut start,
-            &mut len,
-        )
+        rbtl_asm_next_ascii_token(haystack.as_ptr(), haystack.len(), idx, &mut start, &mut len)
     };
 
     (next <= haystack.len()).then_some((start, len, next))
@@ -431,7 +406,6 @@ pub(crate) fn parse_document(haystack: &[u8], out: &mut AsmParseOutput) -> u32 {
 #[inline]
 pub(crate) fn simple_selector_kind(input: &[u8]) -> (u32, usize) {
     let mut tag_len = 0;
-    let kind =
-        unsafe { rbtl_asm_simple_selector_kind(input.as_ptr(), input.len(), &mut tag_len) };
+    let kind = unsafe { rbtl_asm_simple_selector_kind(input.as_ptr(), input.len(), &mut tag_len) };
     (kind, tag_len)
 }

@@ -23,7 +23,7 @@ impl ParserOptions {
 
     /// Creates a [ParserOptions] from a bitset
     pub fn from_raw_checked(flags: u8) -> Option<Self> {
-        (flags <= flags::HIGHEST * 2 - 1).then_some(Self { flags })
+        (flags < flags::HIGHEST * 2).then_some(Self { flags })
     }
 
     /// Returns the raw flags of this bitset

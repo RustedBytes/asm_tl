@@ -194,8 +194,10 @@ impl<
             .stream
             .slice(attr.name_start, attr.name_start + attr.name_len);
 
-        let value = (attr.has_value != 0)
-            .then(|| self.stream.slice(attr.value_start, attr.value_start + attr.value_len));
+        let value = (attr.has_value != 0).then(|| {
+            self.stream
+                .slice(attr.value_start, attr.value_start + attr.value_len)
+        });
 
         Some((name, value))
     }
@@ -310,10 +312,11 @@ impl<
                 self.options.is_tracking_ids(),
             );
 
-            if let (true, Some(bytes)) = (track_classes, &tag._attributes.class) {
-                if let Some(class_bytes) = bytes.as_bytes_borrowed() {
+            if let (true, Some(bytes)) = (track_classes, &tag._attributes.class)
+                && let Some(class_bytes) = bytes.as_bytes_borrowed() {
                     let mut idx = 0;
-                    while let Some((start, len, next)) = asm_core::next_ascii_token(class_bytes, idx)
+                    while let Some((start, len, next)) =
+                        asm_core::next_ascii_token(class_bytes, idx)
                     {
                         let key = Bytes::from(&class_bytes[start..start + len]);
                         if let Some(handles) = self.classes.get_bytes_mut(&key) {
@@ -339,7 +342,6 @@ impl<
                         idx = next;
                     }
                 }
-            }
 
             if let (true, Some(bytes)) = (track_ids, &tag._attributes.id) {
                 insert_bytes_map::<NodeHandle, MAX_IDS>(
@@ -500,10 +502,8 @@ impl<
         const STACK_ATTR_CAP: usize = 128;
         const STACK_STACK_CAP: usize = 64;
 
-        let mut stack_nodes =
-            [const { MaybeUninit::<AsmNodeRecord>::uninit() }; STACK_NODE_CAP];
-        let mut stack_attrs =
-            [const { MaybeUninit::<AsmAttrRecord>::uninit() }; STACK_ATTR_CAP];
+        let mut stack_nodes = [const { MaybeUninit::<AsmNodeRecord>::uninit() }; STACK_NODE_CAP];
+        let mut stack_attrs = [const { MaybeUninit::<AsmAttrRecord>::uninit() }; STACK_ATTR_CAP];
         let mut asm_stack = [const { MaybeUninit::<u32>::uninit() }; STACK_STACK_CAP];
 
         let mut stack_out = asm_core::AsmParseOutput::from_raw_parts(
@@ -520,24 +520,14 @@ impl<
         match stack_status {
             0 => {
                 let node_records = unsafe {
-                    core::slice::from_raw_parts(
-                        stack_nodes.as_ptr().cast(),
-                        stack_out.nodes_len,
-                    )
+                    core::slice::from_raw_parts(stack_nodes.as_ptr().cast(), stack_out.nodes_len)
                 };
                 let attr_records = unsafe {
-                    core::slice::from_raw_parts(
-                        stack_attrs.as_ptr().cast(),
-                        stack_out.attrs_len,
-                    )
+                    core::slice::from_raw_parts(stack_attrs.as_ptr().cast(), stack_out.attrs_len)
                 };
-                return self.finish_asm_document(
-                    stack_out.version,
-                    node_records,
-                    attr_records,
-                );
+                return self.finish_asm_document(stack_out.version, node_records, attr_records);
             }
-            1 | 2 | 3 | 4 => {}
+            1..=4 => {}
             5 => return Err(ParseError::UnsupportedAssemblySyntax),
             _ => return Err(ParseError::UnsupportedAssemblySyntax),
         }
@@ -571,13 +561,9 @@ impl<
                         node_records.set_len(out.nodes_len);
                         attr_records.set_len(out.attrs_len);
                     }
-                    return self.finish_asm_document(
-                        out.version,
-                        &node_records,
-                        &attr_records,
-                    );
+                    return self.finish_asm_document(out.version, &node_records, &attr_records);
                 }
-                1 | 2 | 3 | 4 if node_cap < max_cap || attr_cap < max_cap || side_cap < max_cap => {
+                1..=4 if node_cap < max_cap || attr_cap < max_cap || side_cap < max_cap => {
                     node_cap = (node_cap.saturating_mul(2)).min(max_cap);
                     attr_cap = (attr_cap.saturating_mul(2)).min(max_cap);
                     side_cap = (side_cap.saturating_mul(2)).min(max_cap);
@@ -613,15 +599,14 @@ impl<
                 2 => {
                     let attr = self.materialize_attrs(record, attr_records);
                     Node::Tag(HTMLTag::new(
-                        self.asm_slice_fast(record.name_start, record.name_len).into(),
+                        self.asm_slice_fast(record.name_start, record.name_len)
+                            .into(),
                         attr,
                         InlineVec::with_capacity(record.flags as usize),
                         self.asm_slice_fast(record.start, record.len).into(),
                     ))
                 }
-                3 => {
-                    Node::Comment(self.asm_slice_fast(record.start, record.len).into())
-                }
+                3 => Node::Comment(self.asm_slice_fast(record.start, record.len).into()),
                 _ => {
                     unsafe {
                         tags.set_len(written);
@@ -689,11 +674,7 @@ impl<
         }
     }
 
-    fn materialize_attrs(
-        &self,
-        record: &AsmNodeRecord,
-        attrs: &[AsmAttrRecord],
-    ) -> Attributes<'a> {
+    fn materialize_attrs(&self, record: &AsmNodeRecord, attrs: &[AsmAttrRecord]) -> Attributes<'a> {
         let start = record.attr_start as usize;
         let end = start + record.attr_count as usize;
         let mut out = Attributes::new();
@@ -732,8 +713,8 @@ impl<
                 continue;
             };
 
-            if let (true, Some(bytes)) = (track_classes, &tag._attributes.class) {
-                if let Some(class_bytes) = bytes.as_bytes_borrowed() {
+            if let (true, Some(bytes)) = (track_classes, &tag._attributes.class)
+                && let Some(class_bytes) = bytes.as_bytes_borrowed() {
                     let mut cursor = 0;
                     while let Some((start, len, next)) =
                         asm_core::next_ascii_token(class_bytes, cursor)
@@ -762,7 +743,6 @@ impl<
                         cursor = next;
                     }
                 }
-            }
 
             if let (true, Some(bytes)) = (track_ids, &tag._attributes.id) {
                 insert_bytes_map::<NodeHandle, MAX_IDS>(

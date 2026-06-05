@@ -93,7 +93,7 @@ impl<'a> Parser<'a> {
                 self.stream.expect_and_skip(b']')?;
                 Selector::AttributeValue(attribute, value)
             }
-            c @ (3 | 4 | 5 | 6) => {
+            c @ (3..=6) => {
                 self.stream.advance();
                 self.stream.expect_and_skip(b'=')?;
                 let quote = self.stream.current_cpy().filter(|&c| asm_core::is_quote(c));
@@ -152,5 +152,4 @@ impl<'a> Parser<'a> {
 
         self.parse_combinator(left)
     }
-
 }
