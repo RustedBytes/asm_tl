@@ -12,25 +12,21 @@ pub enum Selector<'a, const MAX_SELECTOR_NODES: usize = 0> {
     /// All selector: *
     All,
     /// And combinator: .foo.bar
-    #[cfg(feature = "std")]
     And(
         Box<Selector<'a, MAX_SELECTOR_NODES>>,
         Box<Selector<'a, MAX_SELECTOR_NODES>>,
     ),
     /// Or combinator: .foo, .bar
-    #[cfg(feature = "std")]
     Or(
         Box<Selector<'a, MAX_SELECTOR_NODES>>,
         Box<Selector<'a, MAX_SELECTOR_NODES>>,
     ),
     /// Descendant combinator: .foo .bar
-    #[cfg(feature = "std")]
     Descendant(
         Box<Selector<'a, MAX_SELECTOR_NODES>>,
         Box<Selector<'a, MAX_SELECTOR_NODES>>,
     ),
     /// Parent combinator: .foo > .bar
-    #[cfg(feature = "std")]
     Parent(
         Box<Selector<'a, MAX_SELECTOR_NODES>>,
         Box<Selector<'a, MAX_SELECTOR_NODES>>,
@@ -65,9 +61,7 @@ impl<'a, const MAX_SELECTOR_NODES: usize> Selector<'a, MAX_SELECTOR_NODES> {
             Self::Class(class) => node
                 .as_tag()
                 .is_some_and(|t| t._attributes.is_class_member(*class)),
-            #[cfg(feature = "std")]
             Self::And(a, b) => a.matches(node) && b.matches(node),
-            #[cfg(feature = "std")]
             Self::Or(a, b) => a.matches(node) || b.matches(node),
             Self::All => true,
             Self::Attribute(attribute) => node
@@ -91,7 +85,6 @@ impl<'a, const MAX_SELECTOR_NODES: usize> Selector<'a, MAX_SELECTOR_NODES> {
                 value,
                 asm_core::contains_ascii_whitespace_token,
             ),
-            #[cfg(feature = "std")]
             _ => false,
         }
     }

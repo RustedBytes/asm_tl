@@ -8,30 +8,16 @@ use crate::asm_core::{self, AsmAttrRecord, AsmNodeRecord};
 use crate::inline::hashmap::InlineHashMap;
 use crate::{ParseError, bytes::Bytes, inline::vec::InlineVec, simd};
 use crate::{ParserOptions, stream::Stream};
-#[cfg(feature = "std")]
 use core::mem::MaybeUninit;
 
-#[cfg(feature = "std")]
 type StorageVec<T, const N: usize> = std::vec::Vec<T>;
-#[cfg(not(feature = "std"))]
-type StorageVec<T, const N: usize> = InlineVec<T, N>;
 
-#[cfg(feature = "std")]
-type StorageMap<K, V, const N: usize> = InlineHashMap<K, V, N>;
-#[cfg(not(feature = "std"))]
 type StorageMap<K, V, const N: usize> = InlineHashMap<K, V, N>;
 
-#[cfg(feature = "std")]
 fn new_vec_with_capacity<T, const N: usize>(capacity: usize) -> StorageVec<T, N> {
     std::vec::Vec::with_capacity(capacity)
 }
 
-#[cfg(not(feature = "std"))]
-fn new_vec_with_capacity<T, const N: usize>(_capacity: usize) -> StorageVec<T, N> {
-    InlineVec::new()
-}
-
-#[cfg(feature = "std")]
 fn new_map<K, V, const N: usize>() -> StorageMap<K, V, N>
 where
     K: core::hash::Hash + Eq,
@@ -39,15 +25,6 @@ where
     InlineHashMap::new()
 }
 
-#[cfg(not(feature = "std"))]
-fn new_map<K, V, const N: usize>() -> StorageMap<K, V, N>
-where
-    K: core::hash::Hash + Eq,
-{
-    InlineHashMap::new()
-}
-
-#[cfg(feature = "std")]
 fn push_vec<T, const N: usize>(
     vec: &mut StorageVec<T, N>,
     value: T,
@@ -55,15 +32,6 @@ fn push_vec<T, const N: usize>(
 ) -> Result<(), ParseError> {
     vec.push(value);
     Ok(())
-}
-
-#[cfg(not(feature = "std"))]
-fn push_vec<T, const N: usize>(
-    vec: &mut StorageVec<T, N>,
-    value: T,
-    err: ParseError,
-) -> Result<(), ParseError> {
-    vec.push(value).map_err(|_| err)
 }
 
 #[inline]
@@ -154,12 +122,7 @@ impl<
 > Parser<'a, MAX_NODES, MAX_STACK, MAX_ROOTS, MAX_IDS, MAX_CLASSES, MAX_SELECTOR_NODES>
 {
     pub(crate) fn new(input: &'a str, options: ParserOptions) -> Self {
-        #[cfg(feature = "std")]
         let (node_capacity, stack_capacity, root_capacity) = (0, 0, 0);
-        #[cfg(not(feature = "std"))]
-        let node_capacity = (input.len() / 48).clamp(8, 256);
-        #[cfg(not(feature = "std"))]
-        let (stack_capacity, root_capacity) = (16, 8);
 
         Parser {
             stack: new_vec_with_capacity::<NodeHandle, MAX_STACK>(stack_capacity),
@@ -529,21 +492,9 @@ impl<
             return Err(ParseError::InvalidLength);
         }
 
-        #[cfg(feature = "std")]
-        {
-            return self.parse_asm_document();
-        }
-
-        #[cfg(not(feature = "std"))]
-        while !self.stream.is_eof() {
-            self.parse_single()?;
-        }
-
-        #[cfg(not(feature = "std"))]
-        Ok(())
+        self.parse_asm_document()
     }
 
-    #[cfg(feature = "std")]
     fn parse_asm_document(&mut self) -> Result<(), ParseError> {
         const STACK_NODE_CAP: usize = 192;
         const STACK_ATTR_CAP: usize = 128;
@@ -641,7 +592,6 @@ impl<
         }
     }
 
-    #[cfg(feature = "std")]
     fn finish_asm_document(
         &mut self,
         version: u32,
@@ -718,7 +668,6 @@ impl<
         Ok(())
     }
 
-    #[cfg(feature = "std")]
     #[inline(always)]
     fn asm_slice_fast(&self, start: u32, len: u32) -> &'a [u8] {
         let start = start as usize;
@@ -728,7 +677,6 @@ impl<
         unsafe { core::slice::from_raw_parts(self.stream.data().as_ptr().add(start), len) }
     }
 
-    #[cfg(feature = "std")]
     #[allow(dead_code)]
     fn asm_slice(&self, start: usize, len: usize) -> Result<&'a [u8], ParseError> {
         let end = start
@@ -741,7 +689,6 @@ impl<
         }
     }
 
-    #[cfg(feature = "std")]
     fn materialize_attrs(
         &self,
         record: &AsmNodeRecord,
@@ -775,7 +722,6 @@ impl<
         out
     }
 
-    #[cfg(feature = "std")]
     fn build_tracking_indexes(&mut self) -> Result<(), ParseError> {
         let track_classes = self.options.is_tracking_classes();
         let track_ids = self.options.is_tracking_ids();

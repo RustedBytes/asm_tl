@@ -1,5 +1,3 @@
-#[cfg(not(feature = "std"))]
-use crate::ParseError;
 use crate::{asm_core, stream::Stream};
 
 use super::Selector;
@@ -31,7 +29,6 @@ impl<'a> Parser<'a> {
         self.stream.slice(start, self.stream.idx)
     }
 
-    #[cfg(feature = "std")]
     fn parse_combinator(&mut self, left: Selector<'a>) -> Option<Selector<'a>> {
         let has_whitespaces = self.skip_whitespaces();
 
@@ -64,23 +61,6 @@ impl<'a> Parser<'a> {
         };
 
         Some(combinator)
-    }
-
-    #[cfg(not(feature = "std"))]
-    fn parse_combinator<const MAX_SELECTOR_NODES: usize>(
-        &mut self,
-        left: Selector<'a, MAX_SELECTOR_NODES>,
-    ) -> Result<Selector<'a, MAX_SELECTOR_NODES>, ParseError> {
-        let has_whitespaces = self.skip_whitespaces();
-        if self.stream.current_cpy().is_none() {
-            return Ok(left);
-        }
-        let tok = self.stream.current_cpy().unwrap();
-        let combinator = asm_core::selector_combinator_kind(tok, has_whitespaces);
-        if combinator == 1 || combinator == 2 || combinator == 3 {
-            return Err(ParseError::SelectorCapacityExceeded);
-        }
-        Err(ParseError::SelectorCapacityExceeded)
     }
 
     fn parse_attribute<const MAX_SELECTOR_NODES: usize>(
@@ -140,7 +120,6 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a full selector
-    #[cfg(feature = "std")]
     pub fn selector(&mut self) -> Option<Selector<'a>> {
         self.skip_whitespaces();
         let tok = self.stream.current_cpy()?;
@@ -174,44 +153,4 @@ impl<'a> Parser<'a> {
         self.parse_combinator(left)
     }
 
-    /// Parses a full selector without allocation.
-    #[cfg(not(feature = "std"))]
-    pub fn selector<const MAX_SELECTOR_NODES: usize>(
-        &mut self,
-    ) -> Result<Selector<'a, MAX_SELECTOR_NODES>, ParseError> {
-        self.skip_whitespaces();
-        let tok = self
-            .stream
-            .current_cpy()
-            .ok_or(ParseError::SelectorCapacityExceeded)?;
-
-        let left = match asm_core::selector_token_kind(tok) {
-            1 => {
-                self.stream.advance();
-                let id = self.read_identifier();
-                Selector::Id(id)
-            }
-            2 => {
-                self.stream.advance();
-                let class = self.read_identifier();
-                Selector::Class(class)
-            }
-            3 => {
-                self.stream.advance();
-                Selector::All
-            }
-            4 => {
-                self.stream.advance();
-                self.parse_attribute::<MAX_SELECTOR_NODES>()
-                    .ok_or(ParseError::SelectorCapacityExceeded)?
-            }
-            5 => {
-                let tag = self.read_identifier();
-                Selector::Tag(tag)
-            }
-            _ => return Err(ParseError::SelectorCapacityExceeded),
-        };
-
-        self.parse_combinator(left)
-    }
 }

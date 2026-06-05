@@ -1,5 +1,4 @@
 use core::fmt;
-#[cfg(feature = "std")]
 use std::error::Error;
 
 /// An error that occurred during parsing
@@ -67,7 +66,6 @@ impl fmt::Display for ParseError {
     }
 }
 
-#[cfg(feature = "std")]
 impl Error for ParseError {}
 
 /// An error that occurred during a call to `Bytes::set`
@@ -87,5 +85,4 @@ impl fmt::Display for SetBytesError {
     }
 }
 
-#[cfg(feature = "std")]
 impl Error for SetBytesError {}

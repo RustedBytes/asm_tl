@@ -1,11 +1,9 @@
-#[cfg(feature = "std")]
 use crate::queryselector::{self, QuerySelectorIterator};
 use crate::{
     Bytes, InnerNodeHandle, ParseError, asm_core,
     inline::{hashmap::InlineHashMap, vec::InlineVec},
 };
 use core::{fmt, mem};
-#[cfg(feature = "std")]
 use std::borrow::Cow;
 
 use super::{Parser, handle::NodeHandle};
@@ -94,10 +92,7 @@ impl<'a> Attributes<'a> {
     ///
     /// # Example
     /// ```
-    /// #[cfg(feature = "std")]
     /// let mut dom = asm_tl::parse("<span contenteditable=\"true\"></span>", Default::default()).unwrap();
-    /// #[cfg(not(feature = "std"))]
-    /// let mut dom = asm_tl::parse::<4, 4, 4, 4, 4, 4>("<span contenteditable=\"true\"></span>", Default::default()).unwrap();
     /// let element = dom.nodes_mut()[0].as_tag_mut().unwrap();
     /// let attributes = element.attributes_mut();
     ///
@@ -121,10 +116,7 @@ impl<'a> Attributes<'a> {
     ///
     /// # Example
     /// ```
-    /// #[cfg(feature = "std")]
     /// let mut dom = asm_tl::parse("<span contenteditable=\"true\"></span>", Default::default()).unwrap();
-    /// #[cfg(not(feature = "std"))]
-    /// let mut dom = asm_tl::parse::<4, 4, 4, 4, 4, 4>("<span contenteditable=\"true\"></span>", Default::default()).unwrap();
     /// let element = dom.nodes_mut()[0].as_tag_mut().unwrap();
     /// let attributes = element.attributes_mut();
     ///
@@ -180,7 +172,6 @@ impl<'a> Attributes<'a> {
     }
 
     /// Returns an iterator `(attribute_key, attribute_value)` over the attributes of this `HTMLTag`
-    #[cfg(feature = "std")]
     pub fn iter(&self) -> impl Iterator<Item = (Cow<'_, str>, Option<Cow<'_, str>>)> + '_ {
         self.raw
             .iter()
@@ -399,7 +390,6 @@ impl<'a> HTMLTag<'a> {
     /// - Spaces within the tag are not preserved (i.e. `<img      src="">` may become `<img src="">`)
     ///
     /// Equivalent to [Element#outerHTML](https://developer.mozilla.org/en-US/docs/Web/API/Element/outerHTML) in browsers.
-    #[cfg(feature = "std")]
     pub fn outer_html<
         'p,
         const MAX_NODES: usize,
@@ -432,7 +422,6 @@ impl<'a> HTMLTag<'a> {
     /// - Spaces within the tag are not preserved (i.e. `<img      src="">` may become `<img src="">`)
     ///
     /// Equivalent to [Element#innerHTML](https://developer.mozilla.org/en-US/docs/Web/API/Element/innerHTML) in browsers.
-    #[cfg(feature = "std")]
     pub fn inner_html<
         'p,
         const MAX_NODES: usize,
@@ -472,10 +461,7 @@ impl<'a> HTMLTag<'a> {
     /// # Example
     /// ```
     /// let source = "<p><span>hello</span></p>";
-    /// #[cfg(feature = "std")]
     /// let dom = asm_tl::parse(source, Default::default()).unwrap();
-    /// #[cfg(not(feature = "std"))]
-    /// let dom = asm_tl::parse::<8, 8, 8, 4, 4, 4>(source, Default::default()).unwrap();
     /// let parser = dom.parser();
     /// let span = dom.nodes().iter().filter_map(|n| n.as_tag()).find(|n| n.name() == "span").unwrap();
     /// let (start, end) = span.boundaries(parser);
@@ -513,7 +499,6 @@ impl<'a> HTMLTag<'a> {
     /// Equivalent to [Element#innerText](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/innerText) in browsers.
     /// This function may not allocate memory for a new string as it can just return the part of the tag that doesn't have markup.
     /// For tags that *do* have more than one subnode, this will allocate memory
-    #[cfg(feature = "std")]
     pub fn inner_text<
         'p,
         const MAX_NODES: usize,
@@ -605,7 +590,6 @@ impl<'a> HTMLTag<'a> {
     /// }
     ///
     /// ```
-    #[cfg(feature = "std")]
     pub fn query_selector<
         'b,
         const MAX_NODES: usize,
@@ -663,7 +647,6 @@ impl<'a, 'b> Children<'a, 'b> {
     ///
     /// # Example
     /// ```
-    /// #[cfg(feature = "std")]
     /// let dom = asm_tl::parse(r#"
     ///     <div id="a">
     ///         <div id="b">
@@ -673,17 +656,6 @@ impl<'a, 'b> Children<'a, 'b> {
     ///         </div>
     ///     </div>
     /// "#, Default::default()).unwrap();
-    /// #[cfg(not(feature = "std"))]
-    /// let dom = asm_tl::parse::<16, 16, 16, 4, 4, 4>(r#"
-    ///     <div id="a">
-    ///         <div id="b">
-    ///             <span>Hello</span>
-    ///             <span>World</span>
-    ///             <span>.</span>
-    ///         </div>
-    ///     </div>
-    /// "#, Default::default()).unwrap();
-    ///
     /// let a = dom.get_element_by_id("a")
     ///     .unwrap()
     ///     .get(dom.parser())
@@ -762,15 +734,9 @@ impl<'a, 'b> Children<'a, 'b> {
     ///
     /// # Example
     /// ```
-    /// #[cfg(feature = "std")]
     /// let dom = asm_tl::parse(r#"
     ///     <div id="a"><div id="b"><span>Hello</span><span>World</span><span>!</span></div></div>
     /// "#, Default::default()).unwrap();
-    /// #[cfg(not(feature = "std"))]
-    /// let dom = asm_tl::parse::<16, 16, 16, 4, 4, 4>(r#"
-    ///     <div id="a"><div id="b"><span>Hello</span><span>World</span><span>!</span></div></div>
-    /// "#, Default::default()).unwrap();
-    ///
     /// let a = dom.get_element_by_id("a")
     ///     .unwrap()
     ///     .get(dom.parser())
@@ -897,7 +863,6 @@ impl<'a> Node<'a> {
     }
 
     /// Returns the inner text of this node
-    #[cfg(feature = "std")]
     pub fn inner_text<
         's,
         'p: 's,
@@ -927,7 +892,6 @@ impl<'a> Node<'a> {
     }
 
     /// Returns the outer HTML of this node
-    #[cfg(feature = "std")]
     pub fn outer_html<
         's,
         const MAX_NODES: usize,
@@ -956,7 +920,6 @@ impl<'a> Node<'a> {
     }
 
     /// Returns the inner HTML of this node
-    #[cfg(feature = "std")]
     pub fn inner_html<
         's,
         const MAX_NODES: usize,

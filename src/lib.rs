@@ -1,6 +1,5 @@
 #![doc = include_str!("../README.md")]
 #![deny(missing_docs)]
-#![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "portable-simd", feature(portable_simd))]
 
 mod asm_core;
@@ -13,7 +12,7 @@ mod parser;
 /// Query selector API
 pub mod queryselector;
 mod stream;
-#[cfg(all(test, feature = "std"))]
+#[cfg(test)]
 mod tests;
 mod util;
 mod vdom;
@@ -29,14 +28,10 @@ pub use errors::ParseError;
 pub use parser::*;
 use queryselector::Selector;
 pub use vdom::VDom;
-#[cfg(feature = "std")]
 pub use vdom::VDomGuard;
 
-#[cfg(feature = "std")]
 const STD_INLINE_CLASS_HANDLES: usize = 32;
-#[cfg(feature = "std")]
 const STD_INLINE_IDS: usize = 16;
-#[cfg(feature = "std")]
 const STD_INLINE_CLASSES: usize = 16;
 
 /// Parses the given input string
@@ -57,7 +52,6 @@ const STD_INLINE_CLASSES: usize = 16;
 /// let dom = parse("<div>Hello, world!</div>", ParserOptions::default()).unwrap();
 /// assert_eq!(dom.query_selector("div").unwrap().count(), 1);
 /// ```
-#[cfg(feature = "std")]
 pub fn parse(
     input: &str,
     options: ParserOptions,
@@ -69,30 +63,6 @@ pub fn parse(
         Parser::<STD_INLINE_CLASS_HANDLES, 0, 0, STD_INLINE_IDS, STD_INLINE_CLASSES, 0>::new(
             input, options,
         );
-    parser.parse()?;
-    Ok(VDom::from(parser))
-}
-
-/// Parses the given input string using bounded, allocation-free storage.
-///
-/// Capacity parameters bound the number of parsed nodes, parser stack entries,
-/// root nodes, tracked IDs, tracked classes, and query selector nodes.
-#[cfg(not(feature = "std"))]
-pub fn parse<
-    const MAX_NODES: usize,
-    const MAX_STACK: usize,
-    const MAX_ROOTS: usize,
-    const MAX_IDS: usize,
-    const MAX_CLASSES: usize,
-    const MAX_SELECTOR_NODES: usize,
->(
-    input: &str,
-    options: ParserOptions,
-) -> Result<
-    VDom<'_, MAX_NODES, MAX_STACK, MAX_ROOTS, MAX_IDS, MAX_CLASSES, MAX_SELECTOR_NODES>,
-    ParseError,
-> {
-    let mut parser = Parser::new(input, options);
     parser.parse()?;
     Ok(VDom::from(parser))
 }
@@ -112,7 +82,6 @@ pub fn parse<
 ///     _ => unreachable!()
 /// }
 /// ```
-#[cfg(feature = "std")]
 pub fn parse_query_selector(input: &str) -> Option<Selector<'_>> {
     let bytes = input.as_bytes();
     let (simple_kind, tag_len) = asm_core::simple_selector_kind(bytes);
@@ -144,18 +113,6 @@ pub fn parse_query_selector(input: &str) -> Option<Selector<'_>> {
     Some(selector)
 }
 
-/// Parses a query selector using bounded, allocation-free storage.
-#[cfg(not(feature = "std"))]
-pub fn parse_query_selector<const MAX_SELECTOR_NODES: usize>(
-    input: &str,
-) -> Result<Selector<'_, MAX_SELECTOR_NODES>, ParseError> {
-    if asm_core::selector_kind(input.as_bytes()) == 0 {
-        return Err(ParseError::UnsupportedAssemblySyntax);
-    }
-
-    queryselector::Parser::new(input.as_bytes()).selector::<MAX_SELECTOR_NODES>()
-}
-
 /// Parses the given input string and returns an owned, RAII guarded DOM
 ///
 /// # Errors
@@ -166,14 +123,12 @@ pub fn parse_query_selector<const MAX_SELECTOR_NODES: usize>(
 /// The given input string is first leaked and turned into raw pointer, and its lifetime will be promoted to 'static.
 /// Once `VDomGuard` goes out of scope, the string will be freed.
 /// It should not be possible to cause UB in its current form and might become a safe function in the future.
-#[cfg(feature = "std")]
 pub unsafe fn parse_owned(input: String, options: ParserOptions) -> Result<VDomGuard, ParseError> {
     VDomGuard::parse(input, options)
 }
 
 /// Runs the x86_64 assembly document scanner and returns emitted record counts.
 #[doc(hidden)]
-#[cfg(feature = "std")]
 pub fn __asm_scan_document_counts(input: &str) -> Result<(usize, usize, usize), ParseError> {
     use core::mem::MaybeUninit;
 

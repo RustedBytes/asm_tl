@@ -1,10 +1,8 @@
 use crate::Bytes;
 use crate::InnerNodeHandle;
-#[cfg(feature = "std")]
 use crate::ParserOptions;
 use crate::asm_core;
 use crate::errors::ParseError;
-#[cfg(feature = "std")]
 use crate::inline::vec::InlineVecIter;
 use crate::parser::HTMLVersion;
 use crate::parser::NodeHandle;
@@ -12,7 +10,6 @@ use crate::queryselector;
 use crate::queryselector::QuerySelectorIterator;
 use crate::{Node, Parser};
 use core::fmt;
-#[cfg(feature = "std")]
 use core::marker::PhantomData;
 
 /// VDom represents a [Document Object Model](https://developer.mozilla.org/en/docs/Web/API/Document_Object_Model)
@@ -160,35 +157,8 @@ impl<
         Ok(())
     }
 
-    /// Tries to parse the query selector and returns an iterator over matching elements.
-    #[cfg(not(feature = "std"))]
-    pub fn query_selector<'b>(
-        &'b self,
-        selector: &'b str,
-    ) -> Result<
-        QuerySelectorIterator<
-            'a,
-            'b,
-            Self,
-            MAX_NODES,
-            MAX_STACK,
-            MAX_ROOTS,
-            MAX_IDS,
-            MAX_CLASSES,
-            MAX_SELECTOR_NODES,
-        >,
-        ParseError,
-    > {
-        let selector = crate::parse_query_selector::<MAX_SELECTOR_NODES>(selector)?;
-        Ok(queryselector::QuerySelectorIterator::new(
-            selector,
-            self.parser(),
-            self,
-        ))
-    }
 }
 
-#[cfg(feature = "std")]
 impl<
     'a,
     const MAX_NODES: usize,
@@ -255,7 +225,6 @@ impl<
 }
 
 /// Iterator returned by [`VDom::get_elements_by_class_name`].
-#[cfg(feature = "std")]
 pub enum ClassNameIterator<'a, 'b, const MAX_NODES: usize = 0> {
     /// No matching tracked class exists.
     Empty,
@@ -268,7 +237,6 @@ pub enum ClassNameIterator<'a, 'b, const MAX_NODES: usize = 0> {
     },
 }
 
-#[cfg(feature = "std")]
 impl<'a, 'b, const MAX_NODES: usize> Iterator for ClassNameIterator<'a, 'b, MAX_NODES> {
     type Item = NodeHandle;
 
@@ -292,7 +260,6 @@ impl<'a, 'b, const MAX_NODES: usize> Iterator for ClassNameIterator<'a, 'b, MAX_
 /// The input string is freed once this struct goes out of scope.
 /// The only way to construct this is by calling `parse_owned()`.
 #[derive(Debug)]
-#[cfg(feature = "std")]
 pub struct VDomGuard {
     /// Wrapped VDom instance
     dom: VDom<
@@ -310,12 +277,9 @@ pub struct VDomGuard {
     _phantom: PhantomData<&'static str>,
 }
 
-#[cfg(feature = "std")]
 unsafe impl Send for VDomGuard {}
-#[cfg(feature = "std")]
 unsafe impl Sync for VDomGuard {}
 
-#[cfg(feature = "std")]
 impl VDomGuard {
     /// Parses the input string
     pub(crate) fn parse(input: String, options: ParserOptions) -> Result<VDomGuard, ParseError> {
@@ -348,7 +312,6 @@ impl VDomGuard {
     }
 }
 
-#[cfg(feature = "std")]
 impl VDomGuard {
     /// Returns a reference to the inner DOM.
     ///
@@ -386,10 +349,8 @@ impl VDomGuard {
 }
 
 #[derive(Debug)]
-#[cfg(feature = "std")]
 struct RawString(*mut str);
 
-#[cfg(feature = "std")]
 impl RawString {
     pub fn new(s: String) -> Self {
         Self(Box::into_raw(s.into_boxed_str()))
@@ -400,7 +361,6 @@ impl RawString {
     }
 }
 
-#[cfg(feature = "std")]
 impl Drop for RawString {
     fn drop(&mut self) {
         // SAFETY: the pointer is always valid because `RawString` can only be constructed through `RawString::new()`

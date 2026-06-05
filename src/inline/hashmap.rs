@@ -55,7 +55,6 @@ where
 
     /// Copies `self` into a new `HashMap<K, V>`
     #[inline]
-    #[cfg(feature = "std")]
     pub fn to_map(&self) -> std::collections::HashMap<K, V>
     where
         K: Clone + Hash + Eq,
@@ -130,7 +129,6 @@ enum InlineHashMapInner<K, V, const N: usize> {
         len: usize,
         data: [MaybeUninit<(K, V)>; N],
     },
-    #[cfg(feature = "std")]
     Heap(std::collections::HashMap<K, V>),
 }
 
@@ -151,7 +149,6 @@ where
 {
     fn clone(&self) -> Self {
         match self {
-            #[cfg(feature = "std")]
             Self::Heap(m) => Self::Heap(m.clone()),
             Self::Inline { len, data } => {
                 let mut new_data = super::uninit_array();
@@ -198,7 +195,6 @@ impl<K, V, const N: usize> InlineHashMapInner<K, V, N> {
             Self::Inline { len, data } => {
                 Iter::Inline(unsafe { InlineHashMapIterator::new(data, *len) })
             }
-            #[cfg(feature = "std")]
             Self::Heap(h) => Iter::Heap(h.iter()),
         }
     }
@@ -207,14 +203,12 @@ impl<K, V, const N: usize> InlineHashMapInner<K, V, N> {
     #[allow(clippy::type_complexity)]
     pub fn inline_parts_mut(&mut self) -> Option<(&mut [MaybeUninit<(K, V)>; N], usize)> {
         match self {
-            #[cfg(feature = "std")]
             Self::Heap(_) => None,
             Self::Inline { len, data } => Some((data, *len)),
         }
     }
 
     #[inline]
-    #[cfg(feature = "std")]
     fn to_map(&self) -> std::collections::HashMap<K, V>
     where
         K: Clone + Hash + Eq,
@@ -242,21 +236,13 @@ impl<K, V, const N: usize> InlineHashMapInner<K, V, N> {
     pub fn len(&self) -> usize {
         match self {
             Self::Inline { len, .. } => *len,
-            #[cfg(feature = "std")]
             Self::Heap(map) => map.len(),
         }
     }
 
     #[inline]
     pub fn is_heap_allocated(&self) -> bool {
-        #[cfg(feature = "std")]
-        {
-            matches!(self, Self::Heap(_))
-        }
-        #[cfg(not(feature = "std"))]
-        {
-            false
-        }
+        matches!(self, Self::Heap(_))
     }
 }
 
@@ -280,7 +266,6 @@ impl<K: Eq + Hash, V, const N: usize> InlineHashMapInner<K, V, N> {
                     .find(|(key, _)| key.eq(&k))
                     .map(|(_, value)| value)
             },
-            #[cfg(feature = "std")]
             Self::Heap(map) => map.get(k),
         }
     }
@@ -292,7 +277,6 @@ impl<K: Eq + Hash, V, const N: usize> InlineHashMapInner<K, V, N> {
                     .find(|(key, _)| key.eq(k))
                     .map(|(_, value)| value)
             },
-            #[cfg(feature = "std")]
             Self::Heap(map) => map.get_mut(k),
         }
     }
@@ -317,7 +301,6 @@ impl<K: Eq + Hash, V, const N: usize> InlineHashMapInner<K, V, N> {
 
                 Some(unsafe { element.assume_init().1 })
             }
-            #[cfg(feature = "std")]
             Self::Heap(h) => h.remove(key),
         }
     }
@@ -325,7 +308,6 @@ impl<K: Eq + Hash, V, const N: usize> InlineHashMapInner<K, V, N> {
     pub fn insert(&mut self, k: K, v: V) -> Result<(), ParseError> {
         let (array, len) = match self {
             Self::Inline { data, len } => (data, len),
-            #[cfg(feature = "std")]
             Self::Heap(map) => {
                 map.insert(k, v);
                 return Ok(());
@@ -333,12 +315,6 @@ impl<K: Eq + Hash, V, const N: usize> InlineHashMapInner<K, V, N> {
         };
 
         if *len >= N {
-            #[cfg(not(feature = "std"))]
-            {
-                return Err(ParseError::AttributeCapacityExceeded);
-            }
-
-            #[cfg(feature = "std")]
             {
                 let mut map = std::collections::HashMap::with_capacity(*len);
 
@@ -370,7 +346,6 @@ impl<K: Eq + Hash, V, const N: usize> InlineHashMapInner<K, V, N> {
             Self::Inline { data, len } => unsafe {
                 InlineHashMapIterator::new(data, *len).any(|(key, _)| key.eq(k))
             },
-            #[cfg(feature = "std")]
             Self::Heap(map) => map.contains_key(k),
         }
     }
@@ -388,7 +363,6 @@ impl<'a, V, const N: usize> InlineHashMapInner<Bytes<'a>, V, N> {
                 }
                 None
             }
-            #[cfg(feature = "std")]
             Self::Heap(map) => map.get(k),
         }
     }
@@ -404,7 +378,6 @@ impl<'a, V, const N: usize> InlineHashMapInner<Bytes<'a>, V, N> {
                 }
                 None
             }
-            #[cfg(feature = "std")]
             Self::Heap(map) => map.get_mut(k),
         }
     }
@@ -415,7 +388,6 @@ pub enum Iter<'a, K, V> {
     /// Iterator over stack-backed entries.
     Inline(InlineHashMapIterator<'a, K, V>),
     /// Iterator over heap-backed entries.
-    #[cfg(feature = "std")]
     Heap(std::collections::hash_map::Iter<'a, K, V>),
 }
 
@@ -425,7 +397,6 @@ impl<'a, K, V> Iterator for Iter<'a, K, V> {
     fn next(&mut self) -> Option<Self::Item> {
         match self {
             Self::Inline(iter) => iter.next(),
-            #[cfg(feature = "std")]
             Self::Heap(iter) => iter.next(),
         }
     }
@@ -487,7 +458,7 @@ impl<'a, K, V> Iterator for InlineHashMapIterator<'a, K, V> {
     }
 }
 
-#[cfg(all(test, feature = "std"))]
+#[cfg(test)]
 mod tests {
     #![allow(unused_must_use)]
 

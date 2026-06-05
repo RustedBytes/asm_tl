@@ -1,4 +1,3 @@
-#[cfg(feature = "std")]
 use core::mem::ManuallyDrop;
 use core::{
     fmt,
@@ -6,11 +5,9 @@ use core::{
     hash::{Hash, Hasher},
     marker::PhantomData,
 };
-#[cfg(feature = "std")]
 use std::borrow::Cow;
 
 use crate::asm_core;
-#[cfg(feature = "std")]
 use crate::errors::SetBytesError;
 
 /// A storage type for raw bytes, used by the parser
@@ -35,7 +32,6 @@ enum BytesInner {
     /// Owned bytes
     ///
     /// This pointer is managed and will be freed when dropped
-    #[cfg(feature = "std")]
     Owned(*mut u8, u32),
 }
 
@@ -82,7 +78,6 @@ impl<'a> Clone for Bytes<'a> {
             BytesInner::Borrowed(data, len) => {
                 Bytes::from(unsafe { compact_bytes_to_slice(*data, *len) })
             }
-            #[cfg(feature = "std")]
             BytesInner::Owned(data, len) => {
                 let (ptr, len) = unsafe { clone_compact_bytes_parts(*data, *len) };
                 Bytes {
@@ -111,7 +106,6 @@ impl<'a> From<&'a [u8]> for Bytes<'a> {
     }
 }
 
-#[cfg(feature = "std")]
 impl TryFrom<String> for Bytes<'static> {
     type Error = SetBytesError;
 
@@ -132,7 +126,6 @@ unsafe fn compact_bytes_to_slice<'a>(ptr: *const u8, l: u32) -> &'a [u8] {
 /// Converts a boxed byte slice to compact raw parts
 ///
 /// The caller is responsible for freeing the returned pointer and that the length of the slice does not overflow a u32!
-#[cfg(feature = "std")]
 unsafe fn boxed_slice_into_compact_parts(slice: Box<[u8]>) -> (*mut u8, u32) {
     // wrap box in `ManuallyDrop` so it's not dropped at the end of the scope
     let mut slice = ManuallyDrop::new(slice);
@@ -144,7 +137,6 @@ unsafe fn boxed_slice_into_compact_parts(slice: Box<[u8]>) -> (*mut u8, u32) {
 
 /// Clones a slice given its raw parts and returns the new, cloned parts
 #[inline]
-#[cfg(feature = "std")]
 unsafe fn clone_compact_bytes_parts(ptr: *mut u8, len: u32) -> (*mut u8, u32) {
     let slice = unsafe { compact_bytes_to_slice(ptr, len) }
         .to_vec()
@@ -180,7 +172,6 @@ impl<'a> Bytes<'a> {
 
     /// Convenient method for lossy-encoding the data as UTF8
     #[inline]
-    #[cfg(feature = "std")]
     pub fn as_utf8_str(&self) -> Cow<'_, str> {
         String::from_utf8_lossy(self.as_bytes())
     }
@@ -197,7 +188,6 @@ impl<'a> Bytes<'a> {
     pub fn as_bytes(&self) -> &[u8] {
         match &self.data {
             BytesInner::Borrowed(b, l) => unsafe { compact_bytes_to_slice(*b, *l) },
-            #[cfg(feature = "std")]
             BytesInner::Owned(o, l) => unsafe { compact_bytes_to_slice(*o, *l) },
         }
     }
@@ -210,7 +200,6 @@ impl<'a> Bytes<'a> {
     pub fn as_bytes_borrowed(&self) -> Option<&'a [u8]> {
         match &self.data {
             BytesInner::Borrowed(b, l) => Some(unsafe { compact_bytes_to_slice(*b, *l) }),
-            #[cfg(feature = "std")]
             _ => None,
         }
     }
@@ -220,13 +209,11 @@ impl<'a> Bytes<'a> {
     pub fn as_ptr(&self) -> *const u8 {
         match &self.data {
             BytesInner::Borrowed(b, _) => *b,
-            #[cfg(feature = "std")]
             BytesInner::Owned(o, _) => *o,
         }
     }
 
     /// Sets the inner data to the given data and returns the old bytes
-    #[cfg(feature = "std")]
     pub fn set<B: IntoOwnedBytes>(&mut self, data: B) -> Result<Option<Box<[u8]>>, SetBytesError> {
         const MAX: usize = u32::MAX as usize;
 
@@ -245,7 +232,6 @@ impl<'a> Bytes<'a> {
     /// ## Safety
     /// - Once `data` is converted to a `Box<[u8]>`, its length must not be greater than u32::MAX
     #[inline]
-    #[cfg(feature = "std")]
     pub unsafe fn set_unchecked<B: IntoOwnedBytes>(&mut self, data: B) -> Option<Box<[u8]>> {
         let data = <B as IntoOwnedBytes>::into_bytes(data);
 
@@ -267,7 +253,6 @@ impl<'a> Bytes<'a> {
     }
 }
 
-#[cfg(feature = "std")]
 mod private {
     pub trait Sealed {}
 }
@@ -275,12 +260,10 @@ mod private {
 /// A trait implemented on types that can be used for `Bytes::set`.
 ///
 /// This trait is sealed and cannot be implemented outside of this crate.
-#[cfg(feature = "std")]
 pub trait IntoOwnedBytes: private::Sealed {
     fn into_bytes(self) -> Box<[u8]>;
 }
 
-#[cfg(feature = "std")]
 macro_rules! impl_into_owned_bytes_trivial {
     ($($t:ty),*) => {
         $(
@@ -295,12 +278,9 @@ macro_rules! impl_into_owned_bytes_trivial {
     };
 }
 
-#[cfg(feature = "std")]
 impl_into_owned_bytes_trivial!(Box<[u8]>, &[u8], Vec<u8>);
 
-#[cfg(feature = "std")]
 impl private::Sealed for &str {}
-#[cfg(feature = "std")]
 impl IntoOwnedBytes for &str {
     #[inline]
     fn into_bytes(self) -> Box<[u8]> {
@@ -308,9 +288,7 @@ impl IntoOwnedBytes for &str {
     }
 }
 
-#[cfg(feature = "std")]
 impl private::Sealed for String {}
-#[cfg(feature = "std")]
 impl IntoOwnedBytes for String {
     #[inline]
     fn into_bytes(self) -> Box<[u8]> {
@@ -318,7 +296,6 @@ impl IntoOwnedBytes for String {
     }
 }
 
-#[cfg(feature = "std")]
 impl Drop for BytesInner {
     fn drop(&mut self) {
         // we only need to deallocate if we own the data

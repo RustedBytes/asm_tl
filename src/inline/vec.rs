@@ -19,7 +19,6 @@ impl<T, const N: usize> InlineVec<T, N> {
     /// Creates an InlineVec with enough heap capacity when the requested
     /// capacity exceeds the inline storage.
     #[inline]
-    #[cfg(feature = "std")]
     pub(crate) fn with_capacity(capacity: usize) -> Self {
         Self(InlineVecInner::with_capacity(capacity))
     }
@@ -52,7 +51,6 @@ impl<T, const N: usize> InlineVec<T, N> {
 
     /// Copies `self` into a new `Vec<T>`
     #[inline]
-    #[cfg(feature = "std")]
     pub fn to_vec(&self) -> Vec<T>
     where
         T: Clone,
@@ -142,7 +140,6 @@ enum InlineVecInner<T, const N: usize> {
         len: usize,
         data: [MaybeUninit<T>; N],
     },
-    #[cfg(feature = "std")]
     Heap(Vec<T>),
 }
 
@@ -161,7 +158,6 @@ where
 {
     fn clone(&self) -> Self {
         match self {
-            #[cfg(feature = "std")]
             Self::Heap(m) => Self::Heap(m.clone()),
             Self::Inline { len, data } => {
                 let mut new_data = super::uninit_array();
@@ -192,7 +188,6 @@ impl<T, const N: usize> InlineVecInner<T, N> {
     }
 
     #[inline]
-    #[cfg(feature = "std")]
     pub(crate) fn with_capacity(capacity: usize) -> Self {
         if capacity > N {
             Self::Heap(Vec::with_capacity(capacity))
@@ -206,7 +201,6 @@ impl<T, const N: usize> InlineVecInner<T, N> {
             Self::Inline { len, data } => unsafe {
                 core::slice::from_raw_parts(data.as_ptr() as *const T, *len)
             },
-            #[cfg(feature = "std")]
             Self::Heap(v) => v.as_slice(),
         }
     }
@@ -216,7 +210,6 @@ impl<T, const N: usize> InlineVecInner<T, N> {
             Self::Inline { len, data } => unsafe {
                 core::slice::from_raw_parts_mut(data.as_mut_ptr() as *mut T, *len)
             },
-            #[cfg(feature = "std")]
             Self::Heap(v) => v.as_mut_slice(),
         }
     }
@@ -224,13 +217,11 @@ impl<T, const N: usize> InlineVecInner<T, N> {
     #[inline]
     pub fn inline_parts_mut(&mut self) -> Option<(&mut [MaybeUninit<T>; N], usize)> {
         match self {
-            #[cfg(feature = "std")]
             Self::Heap(_) => None,
             Self::Inline { len, data } => Some((data, *len)),
         }
     }
 
-    #[cfg(feature = "std")]
     pub fn to_vec(&self) -> Vec<T>
     where
         T: Clone,
@@ -260,7 +251,6 @@ impl<T, const N: usize> InlineVecInner<T, N> {
     pub fn len(&self) -> usize {
         match self {
             Self::Inline { len, .. } => *len,
-            #[cfg(feature = "std")]
             Self::Heap(vec) => vec.len(),
         }
     }
@@ -274,7 +264,6 @@ impl<T, const N: usize> InlineVecInner<T, N> {
                     None
                 }
             }
-            #[cfg(feature = "std")]
             Self::Heap(vec) => vec.get(idx),
         }
     }
@@ -288,7 +277,6 @@ impl<T, const N: usize> InlineVecInner<T, N> {
                     None
                 }
             }
-            #[cfg(feature = "std")]
             Self::Heap(vec) => vec.get_mut(idx),
         }
     }
@@ -314,7 +302,6 @@ impl<T, const N: usize> InlineVecInner<T, N> {
                 // we've made sure that idx is in bounds and if idx is in bounds, then `T` must be initialized
                 unsafe { element.assume_init() }
             }
-            #[cfg(feature = "std")]
             Self::Heap(h) => h.remove(idx),
         }
     }
@@ -334,7 +321,6 @@ impl<T, const N: usize> InlineVecInner<T, N> {
     pub fn push(&mut self, value: T) -> Result<(), ParseError> {
         let (array, len) = match self {
             Self::Inline { data, len } => (data, len),
-            #[cfg(feature = "std")]
             Self::Heap(vec) => {
                 vec.push(value);
                 return Ok(());
@@ -342,12 +328,6 @@ impl<T, const N: usize> InlineVecInner<T, N> {
         };
 
         if asm_core::usize_ge(*len, N) {
-            #[cfg(not(feature = "std"))]
-            {
-                return Err(ParseError::ChildCapacityExceeded);
-            }
-
-            #[cfg(feature = "std")]
             {
                 let mut vec = Vec::with_capacity(*len + 1);
 
@@ -375,14 +355,7 @@ impl<T, const N: usize> InlineVecInner<T, N> {
 
     #[inline]
     pub fn is_heap_allocated(&self) -> bool {
-        #[cfg(feature = "std")]
-        {
-            matches!(self, Self::Heap(_))
-        }
-        #[cfg(not(feature = "std"))]
-        {
-            false
-        }
+        matches!(self, Self::Heap(_))
     }
 }
 
@@ -390,7 +363,6 @@ impl<const N: usize> InlineVecInner<NodeHandle, N> {
     fn push_handle(&mut self, value: NodeHandle) -> Result<(), ParseError> {
         let (array, len) = match self {
             Self::Inline { data, len } => (data, len),
-            #[cfg(feature = "std")]
             Self::Heap(vec) => {
                 vec.push(value);
                 return Ok(());
@@ -398,12 +370,6 @@ impl<const N: usize> InlineVecInner<NodeHandle, N> {
         };
 
         if asm_core::usize_ge(*len, N) {
-            #[cfg(not(feature = "std"))]
-            {
-                return Err(ParseError::ChildCapacityExceeded);
-            }
-
-            #[cfg(feature = "std")]
             {
                 let mut vec = Vec::with_capacity(*len + 1);
                 for element in array.iter_mut().take(*len) {
@@ -455,7 +421,7 @@ impl<T, const N: usize> Drop for InlineVecInner<T, N> {
     }
 }
 
-#[cfg(all(test, feature = "std"))]
+#[cfg(test)]
 mod tests {
     #![allow(unused_must_use)]
 

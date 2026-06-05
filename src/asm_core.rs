@@ -69,13 +69,11 @@ unsafe extern "C" {
         idx: usize,
         out: *mut AsmAttr,
     ) -> u32;
-    #[cfg(feature = "std")]
     fn rbtl_asm_parse_document(
         ptr: *const u8,
         len: usize,
         out: *mut AsmParseOutput,
     ) -> u32;
-    #[cfg(feature = "std")]
     fn rbtl_asm_simple_selector_kind(ptr: *const u8, len: usize, out_tag_len: *mut usize) -> u32;
 }
 
@@ -90,7 +88,6 @@ pub(crate) struct AsmAttr {
     pub(crate) has_value: u32,
 }
 
-#[cfg(feature = "std")]
 #[repr(C)]
 #[derive(Clone, Copy, Default)]
 pub(crate) struct AsmNodeRecord {
@@ -105,7 +102,6 @@ pub(crate) struct AsmNodeRecord {
     pub(crate) name_len: u32,
 }
 
-#[cfg(feature = "std")]
 #[repr(C)]
 #[derive(Clone, Copy, Default)]
 pub(crate) struct AsmAttrRecord {
@@ -117,7 +113,6 @@ pub(crate) struct AsmAttrRecord {
     pub(crate) key_kind: u32,
 }
 
-#[cfg(feature = "std")]
 #[repr(C)]
 pub(crate) struct AsmParseOutput {
     pub(crate) nodes_ptr: *mut AsmNodeRecord,
@@ -136,7 +131,6 @@ pub(crate) struct AsmParseOutput {
     pub(crate) error: u32,
 }
 
-#[cfg(feature = "std")]
 impl AsmParseOutput {
     pub(crate) fn from_raw_parts(
         nodes_ptr: *mut AsmNodeRecord,
@@ -429,13 +423,11 @@ pub(crate) fn parse_attr(haystack: &[u8], idx: usize) -> Option<AsmAttr> {
     (ok != 0).then_some(attr)
 }
 
-#[cfg(feature = "std")]
 #[inline]
 pub(crate) fn parse_document(haystack: &[u8], out: &mut AsmParseOutput) -> u32 {
     unsafe { rbtl_asm_parse_document(haystack.as_ptr(), haystack.len(), out) }
 }
 
-#[cfg(feature = "std")]
 #[inline]
 pub(crate) fn simple_selector_kind(input: &[u8]) -> (u32, usize) {
     let mut tag_len = 0;
