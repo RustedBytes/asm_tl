@@ -37,8 +37,8 @@ let options = asm_tl::ParserOptions::default()
 
 ## Provenance
 
-This crate is a fork of [`astral-tl`](https://github.com/astral-sh/astral-tl),
-modified to add zero-copy parsing and other improvements.
+This crate is a fork of [`rustedbytes-tl`](https://github.com/RustedBytes/rustedbytes-tl),
+modified to add parsing in Assembly and other improvements.
 
 ## License
 
