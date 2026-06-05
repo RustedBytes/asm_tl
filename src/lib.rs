@@ -1,6 +1,5 @@
 #![doc = include_str!("../README.md")]
 #![deny(missing_docs)]
-#![cfg_attr(feature = "portable-simd", feature(portable_simd))]
 
 mod asm_core;
 mod bytes;

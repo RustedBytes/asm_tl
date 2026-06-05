@@ -32,16 +32,8 @@ let options = asm_tl::ParserOptions::default()
 
 ## Features
 
-- `portable-simd`: enables the nightly portable SIMD path.
 - `__INTERNALS_DO_NOT_USE`: exposes internal modules for fuzzing and
   benchmarking.
-
-For the nightly portable SIMD path, enable `portable-simd` and build with
-nightly:
-
-```sh
-cargo +nightly build --features portable-simd
-```
 
 ## Provenance
 

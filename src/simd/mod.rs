@@ -3,9 +3,6 @@ use crate::asm_core;
 #[allow(dead_code)]
 mod fallback;
 
-#[cfg(feature = "portable-simd")]
-mod portable;
-
 /// Checks if the given byte is a "closing" byte (/ or >)
 #[inline]
 pub fn is_closing(needle: u8) -> bool {

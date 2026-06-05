@@ -17,7 +17,6 @@ exclude = [".github/*"]
 # users of the library should never use these directly
 [features]
 default = []
-portable-simd = []
 __INTERNALS_DO_NOT_USE = []
 
 [dependencies]
