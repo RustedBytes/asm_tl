@@ -139,14 +139,10 @@ pub fn __asm_scan_document_counts(input: &str) -> Result<(usize, usize, usize), 
     let mut attrs = [const { MaybeUninit::<asm_core::AsmAttrRecord>::uninit() }; STACK_ATTR_CAP];
     let mut stack = [const { MaybeUninit::<u32>::uninit() }; STACK_STACK_CAP];
     let mut out = asm_core::AsmParseOutput::from_raw_parts(
-        nodes.as_mut_ptr().cast(),
-        STACK_NODE_CAP,
-        attrs.as_mut_ptr().cast(),
-        STACK_ATTR_CAP,
-        core::ptr::null_mut(),
-        0,
-        stack.as_mut_ptr().cast(),
-        STACK_STACK_CAP,
+        asm_core::AsmBuffer::new(nodes.as_mut_ptr().cast(), STACK_NODE_CAP),
+        asm_core::AsmBuffer::new(attrs.as_mut_ptr().cast(), STACK_ATTR_CAP),
+        asm_core::AsmBuffer::new(core::ptr::null_mut(), 0),
+        asm_core::AsmBuffer::new(stack.as_mut_ptr().cast(), STACK_STACK_CAP),
     );
 
     match asm_core::parse_document(input.as_bytes(), &mut out) {

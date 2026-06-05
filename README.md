@@ -2,7 +2,7 @@
 
 [![Crates.io Version](https://img.shields.io/crates/v/asm_tl)](https://crates.io/crates/asm_tl)
 
-`asm_tl` is a fast HTML parser written in pure Rust.
+`asm_tl` is a blazingly fast HTML parser written in Rust and Assembly. Works only on x86_64.
 
 Add it to your `Cargo.toml`:
 

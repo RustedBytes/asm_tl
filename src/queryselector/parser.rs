@@ -67,13 +67,10 @@ impl<'a> Parser<'a> {
         &mut self,
     ) -> Option<Selector<'a, MAX_SELECTOR_NODES>> {
         let attribute = self.read_identifier();
-        let Some(op) = self
+        let op = self
             .stream
             .current_cpy()
-            .map(asm_core::selector_attr_op_kind)
-        else {
-            return None;
-        };
+            .map(asm_core::selector_attr_op_kind)?;
         let ty = match op {
             1 => {
                 self.stream.advance();

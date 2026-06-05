@@ -507,14 +507,10 @@ impl<
         let mut asm_stack = [const { MaybeUninit::<u32>::uninit() }; STACK_STACK_CAP];
 
         let mut stack_out = asm_core::AsmParseOutput::from_raw_parts(
-            stack_nodes.as_mut_ptr().cast(),
-            STACK_NODE_CAP,
-            stack_attrs.as_mut_ptr().cast(),
-            STACK_ATTR_CAP,
-            core::ptr::null_mut(),
-            0,
-            asm_stack.as_mut_ptr().cast(),
-            STACK_STACK_CAP,
+            asm_core::AsmBuffer::new(stack_nodes.as_mut_ptr().cast(), STACK_NODE_CAP),
+            asm_core::AsmBuffer::new(stack_attrs.as_mut_ptr().cast(), STACK_ATTR_CAP),
+            asm_core::AsmBuffer::new(core::ptr::null_mut(), 0),
+            asm_core::AsmBuffer::new(asm_stack.as_mut_ptr().cast(), STACK_STACK_CAP),
         );
         let stack_status = asm_core::parse_document(self.stream.data(), &mut stack_out);
         match stack_status {
@@ -544,14 +540,10 @@ impl<
             let mut stack = Vec::<u32>::with_capacity(side_cap);
 
             let mut out = asm_core::AsmParseOutput::from_raw_parts(
-                node_records.as_mut_ptr(),
-                node_records.capacity(),
-                attr_records.as_mut_ptr(),
-                attr_records.capacity(),
-                core::ptr::null_mut(),
-                0,
-                stack.as_mut_ptr(),
-                stack.capacity(),
+                asm_core::AsmBuffer::new(node_records.as_mut_ptr(), node_records.capacity()),
+                asm_core::AsmBuffer::new(attr_records.as_mut_ptr(), attr_records.capacity()),
+                asm_core::AsmBuffer::new(core::ptr::null_mut(), 0),
+                asm_core::AsmBuffer::new(stack.as_mut_ptr(), stack.capacity()),
             );
             let status = asm_core::parse_document(self.stream.data(), &mut out);
 

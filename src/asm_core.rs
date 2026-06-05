@@ -122,29 +122,36 @@ pub(crate) struct AsmParseOutput {
     pub(crate) error: u32,
 }
 
+pub(crate) struct AsmBuffer<T> {
+    pub(crate) ptr: *mut T,
+    pub(crate) cap: usize,
+}
+
+impl<T> AsmBuffer<T> {
+    pub(crate) fn new(ptr: *mut T, cap: usize) -> Self {
+        Self { ptr, cap }
+    }
+}
+
 impl AsmParseOutput {
     pub(crate) fn from_raw_parts(
-        nodes_ptr: *mut AsmNodeRecord,
-        nodes_cap: usize,
-        attrs_ptr: *mut AsmAttrRecord,
-        attrs_cap: usize,
-        roots_ptr: *mut u32,
-        roots_cap: usize,
-        stack_ptr: *mut u32,
-        stack_cap: usize,
+        nodes: AsmBuffer<AsmNodeRecord>,
+        attrs: AsmBuffer<AsmAttrRecord>,
+        roots: AsmBuffer<u32>,
+        stack: AsmBuffer<u32>,
     ) -> Self {
         Self {
-            nodes_ptr,
-            nodes_cap,
+            nodes_ptr: nodes.ptr,
+            nodes_cap: nodes.cap,
             nodes_len: 0,
-            attrs_ptr,
-            attrs_cap,
+            attrs_ptr: attrs.ptr,
+            attrs_cap: attrs.cap,
             attrs_len: 0,
-            roots_ptr,
-            roots_cap,
+            roots_ptr: roots.ptr,
+            roots_cap: roots.cap,
             roots_len: 0,
-            stack_ptr,
-            stack_cap,
+            stack_ptr: stack.ptr,
+            stack_cap: stack.cap,
             stack_len: 0,
             version: 0,
             error: 0,
