@@ -112,7 +112,7 @@ pub enum HTMLVersion {
 /// The main HTML parser
 ///
 /// Users of this library are not supposed to directly construct this struct.
-/// Instead, users must call `tl::parse()` and use the returned `VDom`.
+/// Instead, users must call `asm_tl::parse()` and use the returned `VDom`.
 #[derive(Debug)]
 pub struct Parser<
     'a,

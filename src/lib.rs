@@ -53,7 +53,7 @@ const STD_INLINE_CLASSES: usize = 16;
 ///
 /// # Example
 /// ```
-/// # use tl::*;
+/// # use asm_tl::*;
 /// let dom = parse("<div>Hello, world!</div>", ParserOptions::default()).unwrap();
 /// assert_eq!(dom.query_selector("div").unwrap().count(), 1);
 /// ```
@@ -101,8 +101,8 @@ pub fn parse<
 ///
 /// # Example
 /// ```
-/// # use tl::queryselector::selector::Selector;
-/// let selector = tl::parse_query_selector("div#test");
+/// # use asm_tl::queryselector::selector::Selector;
+/// let selector = asm_tl::parse_query_selector("div#test");
 ///
 /// match selector {
 ///     Some(Selector::And(left, right)) => {

@@ -56,7 +56,7 @@ const PYPI_SIMPLE: &str = r#"<!DOCTYPE html>
 
 #[cfg(feature = "std")]
 fn parse_current_for_bench(input: &str) {
-    tl::parse(input, tl::ParserOptions::default()).unwrap();
+    asm_tl::parse(input, asm_tl::ParserOptions::default()).unwrap();
 }
 
 #[cfg(feature = "std")]
@@ -67,7 +67,7 @@ fn parse_baseline_for_bench(input: &str) {
 
 #[cfg(feature = "std")]
 fn asm_scan_current_for_bench(input: &str) {
-    tl::__asm_scan_document_counts(input).unwrap();
+    asm_tl::__asm_scan_document_counts(input).unwrap();
 }
 
 #[cfg(not(feature = "std"))]
@@ -79,9 +79,9 @@ fn parse_current_for_bench(input: &str) {
     const MAX_CLASSES: usize = 1;
     const MAX_SELECTOR_NODES: usize = 1;
 
-    tl::parse::<MAX_NODES, MAX_STACK, MAX_ROOTS, MAX_IDS, MAX_CLASSES, MAX_SELECTOR_NODES>(
+    asm_tl::parse::<MAX_NODES, MAX_STACK, MAX_ROOTS, MAX_IDS, MAX_CLASSES, MAX_SELECTOR_NODES>(
         input,
-        tl::ParserOptions::default(),
+        asm_tl::ParserOptions::default(),
     )
     .unwrap();
 }

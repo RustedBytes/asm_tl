@@ -1,14 +1,14 @@
 [package]
-name = "blazingly-fast-tl"
+name = "asm_tl"
 version = "0.1.0"
 authors = ["y21", "Yehor Smoliakov"]
 edition = "2024"
 license = "MIT"
 description = "Fast HTML parser written in pure Rust"
-repository = "https://github.com/RustedBytes/rustedbytes-tl"
-homepage = "https://github.com/RustedBytes/rustedbytes-tl"
+repository = "https://github.com/RustedBytes/asm_tl"
+homepage = "https://github.com/RustedBytes/asm_tl"
 readme = "README.md"
-documentation = "https://docs.rs/rustedbytes-tl"
+documentation = "https://docs.rs/asm_tl"
 keywords = ["html", "parser"]
 categories = ["parser-implementations", "parsing"]
 exclude = [".github/*"]
@@ -36,7 +36,7 @@ name = "tl"
 harness = false
 
 [lib]
-name = "tl"
+name = "asm_tl"
 
 [profile.release]
 opt-level = 3

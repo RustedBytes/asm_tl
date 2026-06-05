@@ -1,15 +1,54 @@
-# `rustedbytes-tl`
+# `asm_tl`
 
-[![Crates.io Version](https://img.shields.io/crates/v/rustedbytes-tl)](https://crates.io/crates/rustedbytes-tl)
+[![Crates.io Version](https://img.shields.io/crates/v/asm_tl)](https://crates.io/crates/asm_tl)
 
-tl is a fast HTML parser written in pure Rust.
+`asm_tl` is a fast HTML parser written in pure Rust.
 
 By default this crate builds without `std` or `alloc`. Enable `std` for the
 allocating convenience API:
 
 ```toml
-rustedbytes-tl = { version = "0.1", features = ["std"] }
+asm_tl = { version = "0.1", features = ["std"] }
 ```
+
+## Usage
+
+With the `std` feature enabled, use `asm_tl::parse` with the default parser
+options:
+
+```rust,ignore
+let dom = asm_tl::parse("<div id=\"app\">Hello</div>", asm_tl::ParserOptions::default())?;
+let parser = dom.parser();
+let app = dom.get_element_by_id("app").unwrap().get(parser).unwrap();
+
+assert_eq!(app.inner_text(parser), "Hello");
+```
+
+Without `std`, parsing uses fixed-capacity, allocation-free storage selected
+with const generics:
+
+```rust,ignore
+let dom = asm_tl::parse::<128, 32, 16, 16, 16, 16>(
+    "<div>Hello</div>",
+    asm_tl::ParserOptions::default(),
+)?;
+```
+
+Enable ID or class tracking when you need fast lookup tables:
+
+```rust,ignore
+let options = asm_tl::ParserOptions::default()
+    .track_ids()
+    .track_classes();
+```
+
+## Features
+
+- `std`: enables the allocating convenience API, including `asm_tl::parse`
+  without explicit capacities.
+- `portable-simd`: enables the nightly portable SIMD path.
+- `__INTERNALS_DO_NOT_USE`: exposes internal modules for fuzzing and
+  benchmarking.
 
 For the nightly portable SIMD path, enable `portable-simd` and build with
 nightly:
@@ -20,8 +59,8 @@ cargo +nightly build --features portable-simd
 
 ## Provenance
 
-This crate is a fork of [`astral-tl`](https://github.com/astral-sh/astral-tl), modified to
-add no-std, zero-copy parsing and other improvements.
+This crate is a fork of [`astral-tl`](https://github.com/astral-sh/astral-tl),
+modified to add no-std, zero-copy parsing and other improvements.
 
 ## License
 

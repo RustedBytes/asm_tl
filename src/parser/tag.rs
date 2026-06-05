@@ -95,9 +95,9 @@ impl<'a> Attributes<'a> {
     /// # Example
     /// ```
     /// #[cfg(feature = "std")]
-    /// let mut dom = tl::parse("<span contenteditable=\"true\"></span>", Default::default()).unwrap();
+    /// let mut dom = asm_tl::parse("<span contenteditable=\"true\"></span>", Default::default()).unwrap();
     /// #[cfg(not(feature = "std"))]
-    /// let mut dom = tl::parse::<4, 4, 4, 4, 4, 4>("<span contenteditable=\"true\"></span>", Default::default()).unwrap();
+    /// let mut dom = asm_tl::parse::<4, 4, 4, 4, 4, 4>("<span contenteditable=\"true\"></span>", Default::default()).unwrap();
     /// let element = dom.nodes_mut()[0].as_tag_mut().unwrap();
     /// let attributes = element.attributes_mut();
     ///
@@ -122,9 +122,9 @@ impl<'a> Attributes<'a> {
     /// # Example
     /// ```
     /// #[cfg(feature = "std")]
-    /// let mut dom = tl::parse("<span contenteditable=\"true\"></span>", Default::default()).unwrap();
+    /// let mut dom = asm_tl::parse("<span contenteditable=\"true\"></span>", Default::default()).unwrap();
     /// #[cfg(not(feature = "std"))]
-    /// let mut dom = tl::parse::<4, 4, 4, 4, 4, 4>("<span contenteditable=\"true\"></span>", Default::default()).unwrap();
+    /// let mut dom = asm_tl::parse::<4, 4, 4, 4, 4, 4>("<span contenteditable=\"true\"></span>", Default::default()).unwrap();
     /// let element = dom.nodes_mut()[0].as_tag_mut().unwrap();
     /// let attributes = element.attributes_mut();
     ///
@@ -473,9 +473,9 @@ impl<'a> HTMLTag<'a> {
     /// ```
     /// let source = "<p><span>hello</span></p>";
     /// #[cfg(feature = "std")]
-    /// let dom = tl::parse(source, Default::default()).unwrap();
+    /// let dom = asm_tl::parse(source, Default::default()).unwrap();
     /// #[cfg(not(feature = "std"))]
-    /// let dom = tl::parse::<8, 8, 8, 4, 4, 4>(source, Default::default()).unwrap();
+    /// let dom = asm_tl::parse::<8, 8, 8, 4, 4, 4>(source, Default::default()).unwrap();
     /// let parser = dom.parser();
     /// let span = dom.nodes().iter().filter_map(|n| n.as_tag()).find(|n| n.name() == "span").unwrap();
     /// let (start, end) = span.boundaries(parser);
@@ -572,7 +572,7 @@ impl<'a> HTMLTag<'a> {
     ///
     /// # Example
     /// ```
-    /// let dom = tl::parse(r#"
+    /// let dom = asm_tl::parse(r#"
     ///     <div class="x">
     ///     <div class="y">
     ///       <div class="z">MATCH</div>
@@ -664,7 +664,7 @@ impl<'a, 'b> Children<'a, 'b> {
     /// # Example
     /// ```
     /// #[cfg(feature = "std")]
-    /// let dom = tl::parse(r#"
+    /// let dom = asm_tl::parse(r#"
     ///     <div id="a">
     ///         <div id="b">
     ///             <span>Hello</span>
@@ -674,7 +674,7 @@ impl<'a, 'b> Children<'a, 'b> {
     ///     </div>
     /// "#, Default::default()).unwrap();
     /// #[cfg(not(feature = "std"))]
-    /// let dom = tl::parse::<16, 16, 16, 4, 4, 4>(r#"
+    /// let dom = asm_tl::parse::<16, 16, 16, 4, 4, 4>(r#"
     ///     <div id="a">
     ///         <div id="b">
     ///             <span>Hello</span>
@@ -763,11 +763,11 @@ impl<'a, 'b> Children<'a, 'b> {
     /// # Example
     /// ```
     /// #[cfg(feature = "std")]
-    /// let dom = tl::parse(r#"
+    /// let dom = asm_tl::parse(r#"
     ///     <div id="a"><div id="b"><span>Hello</span><span>World</span><span>!</span></div></div>
     /// "#, Default::default()).unwrap();
     /// #[cfg(not(feature = "std"))]
-    /// let dom = tl::parse::<16, 16, 16, 4, 4, 4>(r#"
+    /// let dom = asm_tl::parse::<16, 16, 16, 4, 4, 4>(r#"
     ///     <div id="a"><div id="b"><span>Hello</span><span>World</span><span>!</span></div></div>
     /// "#, Default::default()).unwrap();
     ///

@@ -11,8 +11,8 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 
-[dependencies.tl]
-package = "rustedbytes-tl"
+[dependencies.asm_tl]
+package = "asm_tl"
 path = ".."
 features = ["__INTERNALS_DO_NOT_USE"] # we use it for fuzzing internals
 
