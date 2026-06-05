@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 #[cfg(not(all(target_arch = "x86_64", target_os = "linux")))]
 compile_error!("rustedbytes-tl assembly core currently supports only x86_64 Linux");
 
@@ -68,6 +70,12 @@ unsafe extern "C" {
         out: *mut AsmAttr,
     ) -> u32;
     #[cfg(feature = "std")]
+    fn rbtl_asm_parse_document(
+        ptr: *const u8,
+        len: usize,
+        out: *mut AsmParseOutput,
+    ) -> u32;
+    #[cfg(feature = "std")]
     fn rbtl_asm_simple_selector_kind(ptr: *const u8, len: usize, out_tag_len: *mut usize) -> u32;
 }
 
@@ -80,6 +88,83 @@ pub(crate) struct AsmAttr {
     pub(crate) value_len: usize,
     pub(crate) next_idx: usize,
     pub(crate) has_value: u32,
+}
+
+#[cfg(feature = "std")]
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub(crate) struct AsmNodeRecord {
+    pub(crate) kind: u32,
+    pub(crate) flags: u32,
+    pub(crate) parent: u32,
+    pub(crate) attr_start: u32,
+    pub(crate) attr_count: u32,
+    pub(crate) start: usize,
+    pub(crate) len: usize,
+    pub(crate) name_start: usize,
+    pub(crate) name_len: usize,
+}
+
+#[cfg(feature = "std")]
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub(crate) struct AsmAttrRecord {
+    pub(crate) name_start: usize,
+    pub(crate) name_len: usize,
+    pub(crate) value_start: usize,
+    pub(crate) value_len: usize,
+    pub(crate) has_value: u32,
+    pub(crate) key_kind: u32,
+}
+
+#[cfg(feature = "std")]
+#[repr(C)]
+pub(crate) struct AsmParseOutput {
+    pub(crate) nodes_ptr: *mut AsmNodeRecord,
+    pub(crate) nodes_cap: usize,
+    pub(crate) nodes_len: usize,
+    pub(crate) attrs_ptr: *mut AsmAttrRecord,
+    pub(crate) attrs_cap: usize,
+    pub(crate) attrs_len: usize,
+    pub(crate) roots_ptr: *mut u32,
+    pub(crate) roots_cap: usize,
+    pub(crate) roots_len: usize,
+    pub(crate) stack_ptr: *mut u32,
+    pub(crate) stack_cap: usize,
+    pub(crate) stack_len: usize,
+    pub(crate) version: u32,
+    pub(crate) error: u32,
+}
+
+#[cfg(feature = "std")]
+impl AsmParseOutput {
+    pub(crate) fn from_raw_parts(
+        nodes_ptr: *mut AsmNodeRecord,
+        nodes_cap: usize,
+        attrs_ptr: *mut AsmAttrRecord,
+        attrs_cap: usize,
+        roots_ptr: *mut u32,
+        roots_cap: usize,
+        stack_ptr: *mut u32,
+        stack_cap: usize,
+    ) -> Self {
+        Self {
+            nodes_ptr,
+            nodes_cap,
+            nodes_len: 0,
+            attrs_ptr,
+            attrs_cap,
+            attrs_len: 0,
+            roots_ptr,
+            roots_cap,
+            roots_len: 0,
+            stack_ptr,
+            stack_cap,
+            stack_len: 0,
+            version: 0,
+            error: 0,
+        }
+    }
 }
 
 #[inline]
@@ -342,6 +427,12 @@ pub(crate) fn parse_attr(haystack: &[u8], idx: usize) -> Option<AsmAttr> {
     let mut attr = AsmAttr::default();
     let ok = unsafe { rbtl_asm_parse_attr(haystack.as_ptr(), haystack.len(), idx, &mut attr) };
     (ok != 0).then_some(attr)
+}
+
+#[cfg(feature = "std")]
+#[inline]
+pub(crate) fn parse_document(haystack: &[u8], out: &mut AsmParseOutput) -> u32 {
+    unsafe { rbtl_asm_parse_document(haystack.as_ptr(), haystack.len(), out) }
 }
 
 #[cfg(feature = "std")]

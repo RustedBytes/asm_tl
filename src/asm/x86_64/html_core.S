@@ -1361,19 +1361,40 @@ rbtl_asm_parse_attr:
     jae .Lparse_attr_none
 
     mov r8, rdx
-    mov r9b, byte ptr [rdi + rdx]
-    call .Lparse_attr_is_ident
-    test r11d, r11d
-    je .Lparse_attr_none
 
 .Lparse_attr_name_loop:
-    inc rdx
     cmp rdx, rsi
     jae .Lparse_attr_name_done
     mov r9b, byte ptr [rdi + rdx]
-    call .Lparse_attr_is_ident
-    test r11d, r11d
-    jne .Lparse_attr_name_loop
+    cmp r9b, '0'
+    jb .Lparse_attr_name_symbols
+    cmp r9b, '9'
+    jbe .Lparse_attr_name_next
+    cmp r9b, 'A'
+    jb .Lparse_attr_name_symbols
+    cmp r9b, 'Z'
+    jbe .Lparse_attr_name_next
+    cmp r9b, 'a'
+    jb .Lparse_attr_name_symbols
+    cmp r9b, 'z'
+    jbe .Lparse_attr_name_next
+.Lparse_attr_name_symbols:
+    cmp r9b, '-'
+    je .Lparse_attr_name_next
+    cmp r9b, '_'
+    je .Lparse_attr_name_next
+    cmp r9b, '/'
+    je .Lparse_attr_name_next
+    cmp r9b, ':'
+    je .Lparse_attr_name_next
+    cmp r9b, '+'
+    je .Lparse_attr_name_next
+    cmp rdx, r8
+    je .Lparse_attr_none
+    jmp .Lparse_attr_name_done
+.Lparse_attr_name_next:
+    inc rdx
+    jmp .Lparse_attr_name_loop
 
 .Lparse_attr_name_done:
     mov qword ptr [rcx], r8
@@ -1553,6 +1574,465 @@ rbtl_asm_parse_attr:
     mov r11d, 1
     ret
 .size rbtl_asm_parse_attr, .-rbtl_asm_parse_attr
+
+.globl rbtl_asm_parse_document
+.type rbtl_asm_parse_document, @function
+rbtl_asm_parse_document:
+    push rbp
+    mov rbp, rsp
+    push rbx
+    push r12
+    push r13
+    push r14
+    push r15
+    sub rsp, 216
+
+    mov r12, rdi
+    mov r13, rsi
+    mov r14, rdx
+    xor r15, r15
+    mov qword ptr [r14 + 16], 0
+    mov qword ptr [r14 + 40], 0
+    mov qword ptr [r14 + 64], 0
+    mov qword ptr [r14 + 88], 0
+    mov dword ptr [r14 + 96], 0
+    mov dword ptr [r14 + 100], 0
+
+.Ldoc_loop:
+    cmp r15, r13
+    jae .Ldoc_success
+    cmp byte ptr [r12 + r15], '<'
+    je .Ldoc_markup
+
+    mov r8, r15
+.Ldoc_text_scan:
+    cmp r15, r13
+    jae .Ldoc_text_emit
+    cmp byte ptr [r12 + r15], '<'
+    je .Ldoc_text_emit
+    inc r15
+    jmp .Ldoc_text_scan
+.Ldoc_text_emit:
+    mov r9, r15
+    sub r9, r8
+    test r9, r9
+    je .Ldoc_loop
+    mov edi, 1
+    xor r10, r10
+    xor r11, r11
+    xor edx, edx
+    xor ecx, ecx
+    call .Ldoc_emit_node
+    test eax, eax
+    jne .Ldoc_ret_status
+    jmp .Ldoc_loop
+
+.Ldoc_markup:
+    lea rax, [r15 + 1]
+    cmp rax, r13
+    jae .Ldoc_text_emit_lt
+    mov al, byte ptr [r12 + r15 + 1]
+    cmp al, '/'
+    je .Ldoc_end_tag
+    cmp al, '!'
+    je .Ldoc_bang
+    jmp .Ldoc_start_tag
+
+.Ldoc_text_emit_lt:
+    mov r8, r15
+    inc r15
+    mov r9, 1
+    mov edi, 1
+    xor r10, r10
+    xor r11, r11
+    xor edx, edx
+    xor ecx, ecx
+    call .Ldoc_emit_node
+    test eax, eax
+    jne .Ldoc_ret_status
+    jmp .Ldoc_loop
+
+.Ldoc_bang:
+    lea rax, [r15 + 3]
+    cmp rax, r13
+    jae .Ldoc_doctype
+    cmp byte ptr [r12 + r15 + 2], '-'
+    jne .Ldoc_doctype
+    cmp byte ptr [r12 + r15 + 3], '-'
+    jne .Ldoc_doctype
+    mov r8, r15
+    add r15, 4
+.Ldoc_comment_scan:
+    lea rax, [r15 + 2]
+    cmp rax, r13
+    jae .Ldoc_comment_to_eof
+    cmp byte ptr [r12 + r15], '-'
+    jne .Ldoc_comment_next
+    cmp byte ptr [r12 + r15 + 1], '-'
+    jne .Ldoc_comment_next
+    cmp byte ptr [r12 + r15 + 2], '>'
+    jne .Ldoc_comment_next
+    add r15, 3
+    jmp .Ldoc_comment_emit
+.Ldoc_comment_next:
+    inc r15
+    jmp .Ldoc_comment_scan
+.Ldoc_comment_to_eof:
+    mov r15, r13
+.Ldoc_comment_emit:
+    mov r9, r15
+    sub r9, r8
+    mov edi, 3
+    xor r10, r10
+    xor r11, r11
+    xor edx, edx
+    xor ecx, ecx
+    call .Ldoc_emit_node
+    test eax, eax
+    jne .Ldoc_ret_status
+    jmp .Ldoc_loop
+
+.Ldoc_doctype:
+    add r15, 2
+    call .Ldoc_skip_ws
+    mov r8, r15
+    call .Ldoc_scan_ident
+    mov r9, r15
+    sub r9, r8
+    cmp r9, 7
+    jne .Ldoc_unsupported
+    mov rdi, r12
+    add rdi, r8
+    lea rsi, [rip + .Ldoc_doctype_word]
+    mov rdx, 7
+    call rbtl_asm_matches_case_insensitive
+    test eax, eax
+    je .Ldoc_unsupported
+    call .Ldoc_skip_ws
+    mov r8, r15
+    call .Ldoc_scan_ident
+    mov r9, r15
+    sub r9, r8
+    cmp r9, 4
+    jne .Ldoc_doctype_scan_gt
+    mov rdi, r12
+    add rdi, r8
+    lea rsi, [rip + .Ldoc_html_word]
+    mov rdx, 4
+    call rbtl_asm_matches_case_insensitive
+    test eax, eax
+    je .Ldoc_doctype_scan_gt
+    mov dword ptr [r14 + 96], 1
+.Ldoc_doctype_scan_gt:
+    cmp r15, r13
+    jae .Ldoc_success
+    cmp byte ptr [r12 + r15], '>'
+    je .Ldoc_doctype_done
+    inc r15
+    jmp .Ldoc_doctype_scan_gt
+.Ldoc_doctype_done:
+    inc r15
+    jmp .Ldoc_loop
+
+.Ldoc_start_tag:
+    mov qword ptr [rbp - 56], r15
+    inc r15
+    call .Ldoc_skip_ws
+    mov qword ptr [rbp - 64], r15
+    call .Ldoc_scan_ident
+    mov rax, r15
+    sub rax, qword ptr [rbp - 64]
+    test rax, rax
+    je .Ldoc_success
+    mov qword ptr [rbp - 72], rax
+    mov rax, qword ptr [r14 + 40]
+    mov qword ptr [rbp - 80], rax
+    mov dword ptr [rbp - 88], 0
+
+.Ldoc_attr_loop:
+    call .Ldoc_skip_ws
+    cmp r15, r13
+    jae .Ldoc_start_emit
+    mov al, byte ptr [r12 + r15]
+    cmp al, '/'
+    je .Ldoc_self_closing
+    cmp al, '>'
+    je .Ldoc_start_close
+
+    mov rdi, r12
+    mov rsi, r13
+    mov rdx, r15
+    lea rcx, [rbp - 160]
+    call rbtl_asm_parse_attr
+    test eax, eax
+    je .Ldoc_attr_skip_one
+
+    mov rax, qword ptr [r14 + 40]
+    cmp rax, qword ptr [r14 + 32]
+    jae .Ldoc_attr_overflow
+    mov rbx, rax
+    imul rbx, rbx, 40
+    add rbx, qword ptr [r14 + 24]
+    mov rcx, qword ptr [rbp - 160]
+    mov qword ptr [rbx], rcx
+    mov rcx, qword ptr [rbp - 152]
+    mov qword ptr [rbx + 8], rcx
+    mov rcx, qword ptr [rbp - 144]
+    mov qword ptr [rbx + 16], rcx
+    mov rcx, qword ptr [rbp - 136]
+    mov qword ptr [rbx + 24], rcx
+    mov ecx, dword ptr [rbp - 120]
+    mov dword ptr [rbx + 32], ecx
+    xor ecx, ecx
+    cmp qword ptr [rbp - 152], 2
+    jne .Ldoc_attr_check_class
+    mov rdx, qword ptr [rbp - 160]
+    cmp byte ptr [r12 + rdx], 'i'
+    jne .Ldoc_attr_key_done
+    cmp byte ptr [r12 + rdx + 1], 'd'
+    jne .Ldoc_attr_key_done
+    mov ecx, 1
+    jmp .Ldoc_attr_key_done
+.Ldoc_attr_check_class:
+    cmp qword ptr [rbp - 152], 5
+    jne .Ldoc_attr_key_done
+    mov rdx, qword ptr [rbp - 160]
+    cmp byte ptr [r12 + rdx], 'c'
+    jne .Ldoc_attr_key_done
+    cmp byte ptr [r12 + rdx + 1], 'l'
+    jne .Ldoc_attr_key_done
+    cmp byte ptr [r12 + rdx + 2], 'a'
+    jne .Ldoc_attr_key_done
+    cmp byte ptr [r12 + rdx + 3], 's'
+    jne .Ldoc_attr_key_done
+    cmp byte ptr [r12 + rdx + 4], 's'
+    jne .Ldoc_attr_key_done
+    mov ecx, 2
+.Ldoc_attr_key_done:
+    mov dword ptr [rbx + 36], ecx
+    inc qword ptr [r14 + 40]
+
+    mov r15, qword ptr [rbp - 128]
+    cmp dword ptr [rbp - 120], 0
+    je .Ldoc_attr_loop
+    cmp r15, r13
+    jae .Ldoc_attr_loop
+    mov al, byte ptr [r12 + r15]
+    cmp al, '/'
+    je .Ldoc_attr_loop
+    cmp al, '>'
+    je .Ldoc_attr_loop
+    inc r15
+    jmp .Ldoc_attr_loop
+
+.Ldoc_attr_skip_one:
+    inc r15
+    jmp .Ldoc_attr_loop
+
+.Ldoc_self_closing:
+    mov dword ptr [rbp - 88], 1
+    inc r15
+    call .Ldoc_skip_ws
+.Ldoc_start_close:
+    cmp r15, r13
+    jae .Ldoc_start_emit
+    cmp byte ptr [r12 + r15], '>'
+    jne .Ldoc_start_emit
+    inc r15
+.Ldoc_start_emit:
+    mov r8, qword ptr [rbp - 56]
+    mov r9, r15
+    sub r9, r8
+    mov r10, qword ptr [rbp - 64]
+    mov r11, qword ptr [rbp - 72]
+    mov rdx, qword ptr [rbp - 80]
+    mov rcx, qword ptr [r14 + 40]
+    sub rcx, rdx
+    mov edi, 2
+    call .Ldoc_emit_node
+    test eax, eax
+    jne .Ldoc_ret_status
+    mov dword ptr [rbp - 84], edx
+    cmp dword ptr [rbp - 88], 0
+    jne .Ldoc_loop
+    mov rdi, r12
+    add rdi, qword ptr [rbp - 64]
+    mov rsi, qword ptr [rbp - 72]
+    call rbtl_asm_is_void_tag
+    test eax, eax
+    jne .Ldoc_loop
+    mov rax, qword ptr [r14 + 88]
+    cmp rax, qword ptr [r14 + 80]
+    jae .Ldoc_stack_overflow
+    mov rbx, qword ptr [r14 + 72]
+    mov edx, dword ptr [rbp - 84]
+    mov dword ptr [rbx + rax * 4], edx
+    inc qword ptr [r14 + 88]
+    jmp .Ldoc_loop
+
+.Ldoc_end_tag:
+    add r15, 2
+    call .Ldoc_skip_ws
+    mov r8, r15
+.Ldoc_end_scan:
+    cmp r15, r13
+    jae .Ldoc_end_have_eof
+    cmp byte ptr [r12 + r15], '>'
+    je .Ldoc_end_have
+    inc r15
+    jmp .Ldoc_end_scan
+.Ldoc_end_have_eof:
+    mov r9, r15
+    sub r9, r8
+    jmp .Ldoc_end_compare
+.Ldoc_end_have:
+    mov r9, r15
+    sub r9, r8
+    inc r15
+.Ldoc_end_compare:
+    mov rax, qword ptr [r14 + 88]
+    test rax, rax
+    je .Ldoc_loop
+    dec rax
+    mov rbx, qword ptr [r14 + 72]
+    mov edx, dword ptr [rbx + rax * 4]
+    mov rbx, rdx
+    imul rbx, rbx, 56
+    add rbx, qword ptr [r14]
+    cmp r9, qword ptr [rbx + 48]
+    jne .Ldoc_loop
+    xor rcx, rcx
+.Ldoc_end_cmp:
+    cmp rcx, r9
+    jae .Ldoc_end_match
+    mov r10, qword ptr [rbx + 40]
+    lea rdi, [r12 + r8]
+    add rdi, rcx
+    mov r11b, byte ptr [rdi]
+    lea rdi, [r12 + r10]
+    add rdi, rcx
+    cmp r11b, byte ptr [rdi]
+    jne .Ldoc_loop
+    inc rcx
+    jmp .Ldoc_end_cmp
+.Ldoc_end_match:
+    mov qword ptr [r14 + 88], rax
+    mov r10, r15
+    sub r10, qword ptr [rbx + 24]
+    mov qword ptr [rbx + 32], r10
+    jmp .Ldoc_loop
+
+.Ldoc_emit_node:
+    mov rax, qword ptr [r14 + 16]
+    cmp rax, qword ptr [r14 + 8]
+    jae .Ldoc_emit_node_overflow
+    mov rbx, rax
+    imul rbx, rbx, 56
+    add rbx, qword ptr [r14]
+    mov dword ptr [rbx], edi
+    mov dword ptr [rbx + 4], 0
+    mov dword ptr [rbx + 12], edx
+    mov dword ptr [rbx + 16], ecx
+    mov qword ptr [rbx + 24], r8
+    mov qword ptr [rbx + 32], r9
+    mov qword ptr [rbx + 40], r10
+    mov qword ptr [rbx + 48], r11
+    mov rcx, qword ptr [r14 + 88]
+    test rcx, rcx
+    je .Ldoc_emit_root
+    dec rcx
+    mov rdx, qword ptr [r14 + 72]
+    mov edx, dword ptr [rdx + rcx * 4]
+    mov dword ptr [rbx + 8], edx
+    jmp .Ldoc_emit_done_parent
+.Ldoc_emit_root:
+    mov dword ptr [rbx + 8], 0xffffffff
+    inc qword ptr [r14 + 64]
+.Ldoc_emit_done_parent:
+    mov edx, eax
+    inc rax
+    mov qword ptr [r14 + 16], rax
+    xor eax, eax
+    ret
+.Ldoc_emit_node_overflow:
+    mov eax, 1
+    ret
+
+.Ldoc_skip_ws:
+    cmp r15, r13
+    jae .Ldoc_skip_ws_ret
+    cmp byte ptr [r12 + r15], ' '
+    je .Ldoc_skip_ws_one
+    cmp byte ptr [r12 + r15], 10
+    je .Ldoc_skip_ws_one
+    ret
+.Ldoc_skip_ws_one:
+    inc r15
+    jmp .Ldoc_skip_ws
+.Ldoc_skip_ws_ret:
+    ret
+
+.Ldoc_scan_ident:
+    cmp r15, r13
+    jae .Ldoc_scan_ident_ret
+    mov al, byte ptr [r12 + r15]
+    cmp al, '0'
+    jb .Ldoc_scan_symbols
+    cmp al, '9'
+    jbe .Ldoc_scan_next
+    cmp al, 'A'
+    jb .Ldoc_scan_symbols
+    cmp al, 'Z'
+    jbe .Ldoc_scan_next
+    cmp al, 'a'
+    jb .Ldoc_scan_symbols
+    cmp al, 'z'
+    jbe .Ldoc_scan_next
+.Ldoc_scan_symbols:
+    cmp al, '-'
+    je .Ldoc_scan_next
+    cmp al, '_'
+    je .Ldoc_scan_next
+    cmp al, '/'
+    je .Ldoc_scan_next
+    cmp al, ':'
+    je .Ldoc_scan_next
+    cmp al, '+'
+    je .Ldoc_scan_next
+    ret
+.Ldoc_scan_next:
+    inc r15
+    jmp .Ldoc_scan_ident
+.Ldoc_scan_ident_ret:
+    ret
+
+.Ldoc_attr_overflow:
+    mov eax, 2
+    jmp .Ldoc_ret_status
+.Ldoc_stack_overflow:
+    mov eax, 4
+    jmp .Ldoc_ret_status
+.Ldoc_unsupported:
+    mov eax, 5
+    jmp .Ldoc_ret_status
+.Ldoc_success:
+    xor eax, eax
+.Ldoc_ret_status:
+    mov dword ptr [r14 + 100], eax
+    add rsp, 216
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
+    pop rbp
+    ret
+
+.Ldoc_doctype_word:
+    .ascii "doctype"
+.Ldoc_html_word:
+    .ascii "html"
+.size rbtl_asm_parse_document, .-rbtl_asm_parse_document
 
 .globl rbtl_asm_simple_selector_kind
 .type rbtl_asm_simple_selector_kind, @function

@@ -60,6 +60,7 @@ impl<'a, T> Stream<'a, T> {
     }
 
     /// Checks whether the stream has reached the end
+    #[allow(dead_code)]
     #[inline]
     pub fn is_eof(&self) -> bool {
         asm_core::usize_ge(self.idx, self.data.len())
