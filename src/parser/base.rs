@@ -313,35 +313,34 @@ impl<
             );
 
             if let (true, Some(bytes)) = (track_classes, &tag._attributes.class)
-                && let Some(class_bytes) = bytes.as_bytes_borrowed() {
-                    let mut idx = 0;
-                    while let Some((start, len, next)) =
-                        asm_core::next_ascii_token(class_bytes, idx)
-                    {
-                        let key = Bytes::from(&class_bytes[start..start + len]);
-                        if let Some(handles) = self.classes.get_bytes_mut(&key) {
-                            push_class_handle::<MAX_NODES>(
-                                handles,
-                                handle,
-                                ParseError::ClassCapacityExceeded,
-                            )?;
-                        } else {
-                            let mut handles = ClassVec::<MAX_NODES>::new();
-                            push_class_handle::<MAX_NODES>(
-                                &mut handles,
-                                handle,
-                                ParseError::ClassCapacityExceeded,
-                            )?;
-                            insert_bytes_map::<ClassVec<MAX_NODES>, MAX_CLASSES>(
-                                &mut self.classes,
-                                key,
-                                handles,
-                                ParseError::ClassCapacityExceeded,
-                            )?;
-                        }
-                        idx = next;
+                && let Some(class_bytes) = bytes.as_bytes_borrowed()
+            {
+                let mut idx = 0;
+                while let Some((start, len, next)) = asm_core::next_ascii_token(class_bytes, idx) {
+                    let key = Bytes::from(&class_bytes[start..start + len]);
+                    if let Some(handles) = self.classes.get_bytes_mut(&key) {
+                        push_class_handle::<MAX_NODES>(
+                            handles,
+                            handle,
+                            ParseError::ClassCapacityExceeded,
+                        )?;
+                    } else {
+                        let mut handles = ClassVec::<MAX_NODES>::new();
+                        push_class_handle::<MAX_NODES>(
+                            &mut handles,
+                            handle,
+                            ParseError::ClassCapacityExceeded,
+                        )?;
+                        insert_bytes_map::<ClassVec<MAX_NODES>, MAX_CLASSES>(
+                            &mut self.classes,
+                            key,
+                            handles,
+                            ParseError::ClassCapacityExceeded,
+                        )?;
                     }
+                    idx = next;
                 }
+            }
 
             if let (true, Some(bytes)) = (track_ids, &tag._attributes.id) {
                 insert_bytes_map::<NodeHandle, MAX_IDS>(
@@ -706,35 +705,35 @@ impl<
             };
 
             if let (true, Some(bytes)) = (track_classes, &tag._attributes.class)
-                && let Some(class_bytes) = bytes.as_bytes_borrowed() {
-                    let mut cursor = 0;
-                    while let Some((start, len, next)) =
-                        asm_core::next_ascii_token(class_bytes, cursor)
-                    {
-                        let key = Bytes::from(&class_bytes[start..start + len]);
-                        if let Some(handles) = self.classes.get_bytes_mut(&key) {
-                            push_class_handle::<MAX_NODES>(
-                                handles,
-                                handle,
-                                ParseError::ClassCapacityExceeded,
-                            )?;
-                        } else {
-                            let mut handles = ClassVec::<MAX_NODES>::new();
-                            push_class_handle::<MAX_NODES>(
-                                &mut handles,
-                                handle,
-                                ParseError::ClassCapacityExceeded,
-                            )?;
-                            insert_bytes_map::<ClassVec<MAX_NODES>, MAX_CLASSES>(
-                                &mut self.classes,
-                                key,
-                                handles,
-                                ParseError::ClassCapacityExceeded,
-                            )?;
-                        }
-                        cursor = next;
+                && let Some(class_bytes) = bytes.as_bytes_borrowed()
+            {
+                let mut cursor = 0;
+                while let Some((start, len, next)) = asm_core::next_ascii_token(class_bytes, cursor)
+                {
+                    let key = Bytes::from(&class_bytes[start..start + len]);
+                    if let Some(handles) = self.classes.get_bytes_mut(&key) {
+                        push_class_handle::<MAX_NODES>(
+                            handles,
+                            handle,
+                            ParseError::ClassCapacityExceeded,
+                        )?;
+                    } else {
+                        let mut handles = ClassVec::<MAX_NODES>::new();
+                        push_class_handle::<MAX_NODES>(
+                            &mut handles,
+                            handle,
+                            ParseError::ClassCapacityExceeded,
+                        )?;
+                        insert_bytes_map::<ClassVec<MAX_NODES>, MAX_CLASSES>(
+                            &mut self.classes,
+                            key,
+                            handles,
+                            ParseError::ClassCapacityExceeded,
+                        )?;
                     }
+                    cursor = next;
                 }
+            }
 
             if let (true, Some(bytes)) = (track_ids, &tag._attributes.id) {
                 insert_bytes_map::<NodeHandle, MAX_IDS>(

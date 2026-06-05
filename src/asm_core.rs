@@ -314,10 +314,7 @@ pub(crate) fn find_comment_end(haystack: &[u8]) -> Option<usize> {
 pub(crate) fn attr_key_kind(key: &[u8]) -> u32 {
     match key.len() {
         2 => (key == b"id") as u32,
-        5
-            if key == b"class" => {
-                2
-            }
+        5 if key == b"class" => 2,
         _ => 0,
     }
 }
