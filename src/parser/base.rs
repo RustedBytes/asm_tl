@@ -8,6 +8,8 @@ use crate::asm_core::{self, AsmAttrRecord, AsmNodeRecord};
 use crate::inline::hashmap::InlineHashMap;
 use crate::{ParseError, bytes::Bytes, inline::vec::InlineVec, simd};
 use crate::{ParserOptions, stream::Stream};
+#[cfg(feature = "std")]
+use core::mem::MaybeUninit;
 
 #[cfg(feature = "std")]
 type StorageVec<T, const N: usize> = std::vec::Vec<T>;
@@ -152,13 +154,19 @@ impl<
 > Parser<'a, MAX_NODES, MAX_STACK, MAX_ROOTS, MAX_IDS, MAX_CLASSES, MAX_SELECTOR_NODES>
 {
     pub(crate) fn new(input: &'a str, options: ParserOptions) -> Self {
+        #[cfg(feature = "std")]
+        let (node_capacity, stack_capacity, root_capacity) = (0, 0, 0);
+        #[cfg(not(feature = "std"))]
         let node_capacity = (input.len() / 48).clamp(8, 256);
+        #[cfg(not(feature = "std"))]
+        let (stack_capacity, root_capacity) = (16, 8);
+
         Parser {
-            stack: new_vec_with_capacity::<NodeHandle, MAX_STACK>(16),
+            stack: new_vec_with_capacity::<NodeHandle, MAX_STACK>(stack_capacity),
             options,
             tags: new_vec_with_capacity::<Node<'a>, MAX_NODES>(node_capacity),
             stream: Stream::new(input.as_bytes()),
-            ast: new_vec_with_capacity::<NodeHandle, MAX_ROOTS>(8),
+            ast: new_vec_with_capacity::<NodeHandle, MAX_ROOTS>(root_capacity),
             ids: new_map::<Bytes<'a>, NodeHandle, MAX_IDS>(),
             classes: new_map::<Bytes<'a>, ClassVec<MAX_NODES>, MAX_CLASSES>(),
             version: None,
@@ -537,13 +545,59 @@ impl<
 
     #[cfg(feature = "std")]
     fn parse_asm_document(&mut self) -> Result<(), ParseError> {
+        const STACK_NODE_CAP: usize = 192;
+        const STACK_ATTR_CAP: usize = 128;
+        const STACK_STACK_CAP: usize = 64;
+
+        let mut stack_nodes =
+            [const { MaybeUninit::<AsmNodeRecord>::uninit() }; STACK_NODE_CAP];
+        let mut stack_attrs =
+            [const { MaybeUninit::<AsmAttrRecord>::uninit() }; STACK_ATTR_CAP];
+        let mut asm_stack = [const { MaybeUninit::<u32>::uninit() }; STACK_STACK_CAP];
+
+        let mut stack_out = asm_core::AsmParseOutput::from_raw_parts(
+            stack_nodes.as_mut_ptr().cast(),
+            STACK_NODE_CAP,
+            stack_attrs.as_mut_ptr().cast(),
+            STACK_ATTR_CAP,
+            core::ptr::null_mut(),
+            0,
+            asm_stack.as_mut_ptr().cast(),
+            STACK_STACK_CAP,
+        );
+        let stack_status = asm_core::parse_document(self.stream.data(), &mut stack_out);
+        match stack_status {
+            0 => {
+                let node_records = unsafe {
+                    core::slice::from_raw_parts(
+                        stack_nodes.as_ptr().cast(),
+                        stack_out.nodes_len,
+                    )
+                };
+                let attr_records = unsafe {
+                    core::slice::from_raw_parts(
+                        stack_attrs.as_ptr().cast(),
+                        stack_out.attrs_len,
+                    )
+                };
+                return self.finish_asm_document(
+                    stack_out.version,
+                    node_records,
+                    attr_records,
+                );
+            }
+            1 | 2 | 3 | 4 => {}
+            5 => return Err(ParseError::UnsupportedAssemblySyntax),
+            _ => return Err(ParseError::UnsupportedAssemblySyntax),
+        }
+
         let len = self.stream.len();
         let max_cap = len + 1;
-        let mut node_cap = (len / 2).max(16).min(max_cap);
-        let mut attr_cap = (len / 3).max(16).min(max_cap);
-        let mut side_cap = (len / 3).max(16).min(max_cap);
+        let mut node_cap = (len / 2).max(STACK_NODE_CAP * 2).min(max_cap);
+        let mut attr_cap = (len / 3).max(STACK_ATTR_CAP * 2).min(max_cap);
+        let mut side_cap = (len / 3).max(STACK_STACK_CAP * 2).min(max_cap);
 
-        let (out, node_records, attr_records) = loop {
+        loop {
             let mut node_records = Vec::<AsmNodeRecord>::with_capacity(node_cap);
             let mut attr_records = Vec::<AsmAttrRecord>::with_capacity(attr_cap);
             let mut stack = Vec::<u32>::with_capacity(side_cap);
@@ -566,7 +620,11 @@ impl<
                         node_records.set_len(out.nodes_len);
                         attr_records.set_len(out.attrs_len);
                     }
-                    break (out, node_records, attr_records);
+                    return self.finish_asm_document(
+                        out.version,
+                        &node_records,
+                        &attr_records,
+                    );
                 }
                 1 | 2 | 3 | 4 if node_cap < max_cap || attr_cap < max_cap || side_cap < max_cap => {
                     node_cap = (node_cap.saturating_mul(2)).min(max_cap);
@@ -580,54 +638,62 @@ impl<
                 5 => return Err(ParseError::UnsupportedAssemblySyntax),
                 _ => return Err(ParseError::UnsupportedAssemblySyntax),
             }
-        };
+        }
+    }
 
+    #[cfg(feature = "std")]
+    fn finish_asm_document(
+        &mut self,
+        version: u32,
+        node_records: &[AsmNodeRecord],
+        attr_records: &[AsmAttrRecord],
+    ) -> Result<(), ParseError> {
         self.tags.clear();
         self.ast.clear();
         self.stack.clear();
-        self.ids = new_map::<Bytes<'a>, NodeHandle, MAX_IDS>();
-        self.classes = new_map::<Bytes<'a>, ClassVec<MAX_NODES>, MAX_CLASSES>();
-        self.version = (out.version == 1).then_some(HTMLVersion::HTML5);
+        self.version = (version == 1).then_some(HTMLVersion::HTML5);
 
-        let node_records = &node_records[..out.nodes_len];
-        let attr_records = &attr_records[..out.attrs_len];
+        let mut tags = Vec::with_capacity(node_records.len());
 
         for record in node_records {
             let node = match record.kind {
-                1 => Node::Raw(self.asm_slice(record.start, record.len)?.into()),
+                1 => Node::Raw(self.asm_slice_fast(record.start, record.len).into()),
                 2 => {
-                    let attr = self.materialize_attrs(record, attr_records)?;
+                    let attr = self.materialize_attrs(record, attr_records);
                     Node::Tag(HTMLTag::new(
-                        self.asm_slice(record.name_start, record.name_len)?.into(),
+                        self.asm_slice_fast(record.name_start, record.name_len).into(),
                         attr,
                         InlineVec::new(),
-                        self.asm_slice(record.start, record.len)?.into(),
+                        self.asm_slice_fast(record.start, record.len).into(),
                     ))
                 }
-                3 => Node::Comment(self.asm_slice(record.start, record.len)?.into()),
+                3 => {
+                    Node::Comment(self.asm_slice_fast(record.start, record.len).into())
+                }
                 _ => return Err(ParseError::UnsupportedAssemblySyntax),
             };
-            self.register_tag(node)?;
+            tags.push(node);
         }
+
+        self.tags = tags;
+        self.ast = Vec::with_capacity(node_records.len().min(16));
 
         for (idx, record) in node_records.iter().enumerate() {
             let handle = NodeHandle::new(idx as u32);
             if record.parent == u32::MAX {
-                push_vec::<NodeHandle, MAX_ROOTS>(
-                    &mut self.ast,
-                    handle,
-                    ParseError::RootCapacityExceeded,
-                )?;
+                self.ast.push(handle);
             } else {
                 let parent = self
                     .tags
                     .get_mut(record.parent as usize)
                     .and_then(Node::as_tag_mut)
                     .ok_or(ParseError::UnsupportedAssemblySyntax)?;
-                parent
-                    ._children
-                    .push_handle(handle)
-                    .map_err(|_| ParseError::ChildCapacityExceeded)?;
+                if let Err(handle) = parent._children.push_inline_unchecked(handle) {
+                    parent
+                        ._children
+                        .push_handle(handle)
+                        .map_err(|_| ParseError::ChildCapacityExceeded)?;
+                }
             }
         }
 
@@ -640,6 +706,17 @@ impl<
     }
 
     #[cfg(feature = "std")]
+    #[inline(always)]
+    fn asm_slice_fast(&self, start: u32, len: u32) -> &'a [u8] {
+        let start = start as usize;
+        let len = len as usize;
+        debug_assert!(start <= self.stream.len());
+        debug_assert!(start + len <= self.stream.len());
+        unsafe { core::slice::from_raw_parts(self.stream.data().as_ptr().add(start), len) }
+    }
+
+    #[cfg(feature = "std")]
+    #[allow(dead_code)]
     fn asm_slice(&self, start: usize, len: usize) -> Result<&'a [u8], ParseError> {
         let end = start
             .checked_add(len)
@@ -656,18 +733,16 @@ impl<
         &self,
         record: &AsmNodeRecord,
         attrs: &[AsmAttrRecord],
-    ) -> Result<Attributes<'a>, ParseError> {
+    ) -> Attributes<'a> {
         let start = record.attr_start as usize;
         let end = start + record.attr_count as usize;
         let mut out = Attributes::new();
 
-        for attr in attrs
-            .get(start..end)
-            .ok_or(ParseError::UnsupportedAssemblySyntax)?
-        {
-            let key = self.asm_slice(attr.name_start, attr.name_len)?;
+        debug_assert!(end <= attrs.len());
+        for attr in &attrs[start..end] {
+            let key = self.asm_slice_fast(attr.name_start, attr.name_len);
             let value = if attr.has_value != 0 {
-                Some(self.asm_slice(attr.value_start, attr.value_len)?.into())
+                Some(self.asm_slice_fast(attr.value_start, attr.value_len).into())
             } else {
                 None
             };
@@ -676,14 +751,15 @@ impl<
                 1 => out.id = value,
                 2 => out.class = value,
                 _ => {
-                    out.raw
-                        .insert(key.into(), value)
-                        .map_err(|_| ParseError::AttributeCapacityExceeded)?;
+                    let key = key.into();
+                    if let Err((key, value)) = out.raw.push_inline_unchecked(key, value) {
+                        let _ = out.raw.insert(key, value);
+                    }
                 }
             }
         }
 
-        Ok(out)
+        out
     }
 
     #[cfg(feature = "std")]

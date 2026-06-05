@@ -65,6 +65,11 @@ fn parse_baseline_for_bench(input: &str) {
         .unwrap();
 }
 
+#[cfg(feature = "std")]
+fn asm_scan_current_for_bench(input: &str) {
+    tl::__asm_scan_document_counts(input).unwrap();
+}
+
 #[cfg(not(feature = "std"))]
 fn parse_current_for_bench(input: &str) {
     const MAX_NODES: usize = 512;
@@ -95,6 +100,13 @@ pub fn criterion_benchmark(cr: &mut Criterion) {
         });
     });
 
+    #[cfg(feature = "std")]
+    cr.bench_function("current-asm-scan/tl", |b| {
+        b.iter(|| {
+            asm_scan_current_for_bench(black_box(INPUT));
+        });
+    });
+
     cr.bench_function("current/pypi_simple", |b| {
         b.iter(|| {
             parse_current_for_bench(black_box(PYPI_SIMPLE));
@@ -105,6 +117,13 @@ pub fn criterion_benchmark(cr: &mut Criterion) {
     cr.bench_function("rustedbytes-tl/pypi_simple", |b| {
         b.iter(|| {
             parse_baseline_for_bench(black_box(PYPI_SIMPLE));
+        });
+    });
+
+    #[cfg(feature = "std")]
+    cr.bench_function("current-asm-scan/pypi_simple", |b| {
+        b.iter(|| {
+            asm_scan_current_for_bench(black_box(PYPI_SIMPLE));
         });
     });
 }

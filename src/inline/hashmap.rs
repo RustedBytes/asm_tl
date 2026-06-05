@@ -76,6 +76,14 @@ where
         self.0.insert(key, value)
     }
 
+    /// Appends an entry to inline storage without checking for duplicate keys.
+    ///
+    /// Returns the entry if the map is already heap-backed or the inline storage is full.
+    #[inline]
+    pub(crate) fn push_inline_unchecked(&mut self, key: K, value: V) -> Result<(), (K, V)> {
+        self.0.push_inline_unchecked(key, value)
+    }
+
     /// Removes an element from the map, and returns ownership over the value
     #[inline]
     pub fn remove(&mut self, key: &K) -> Option<V> {
@@ -253,6 +261,18 @@ impl<K, V, const N: usize> InlineHashMapInner<K, V, N> {
 }
 
 impl<K: Eq + Hash, V, const N: usize> InlineHashMapInner<K, V, N> {
+    #[inline]
+    fn push_inline_unchecked(&mut self, key: K, value: V) -> Result<(), (K, V)> {
+        match self {
+            Self::Inline { len, data } if *len < N => {
+                data[*len].write((key, value));
+                *len += 1;
+                Ok(())
+            }
+            _ => Err((key, value)),
+        }
+    }
+
     pub fn get<'m>(&'m self, k: &K) -> Option<&'m V> {
         match self {
             Self::Inline { data, len } => unsafe {

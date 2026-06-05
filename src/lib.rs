@@ -170,3 +170,37 @@ pub fn parse_query_selector<const MAX_SELECTOR_NODES: usize>(
 pub unsafe fn parse_owned(input: String, options: ParserOptions) -> Result<VDomGuard, ParseError> {
     VDomGuard::parse(input, options)
 }
+
+/// Runs the x86_64 assembly document scanner and returns emitted record counts.
+#[doc(hidden)]
+#[cfg(feature = "std")]
+pub fn __asm_scan_document_counts(input: &str) -> Result<(usize, usize, usize), ParseError> {
+    use core::mem::MaybeUninit;
+
+    const STACK_NODE_CAP: usize = 192;
+    const STACK_ATTR_CAP: usize = 128;
+    const STACK_STACK_CAP: usize = 64;
+
+    let mut nodes = [const { MaybeUninit::<asm_core::AsmNodeRecord>::uninit() }; STACK_NODE_CAP];
+    let mut attrs = [const { MaybeUninit::<asm_core::AsmAttrRecord>::uninit() }; STACK_ATTR_CAP];
+    let mut stack = [const { MaybeUninit::<u32>::uninit() }; STACK_STACK_CAP];
+    let mut out = asm_core::AsmParseOutput::from_raw_parts(
+        nodes.as_mut_ptr().cast(),
+        STACK_NODE_CAP,
+        attrs.as_mut_ptr().cast(),
+        STACK_ATTR_CAP,
+        core::ptr::null_mut(),
+        0,
+        stack.as_mut_ptr().cast(),
+        STACK_STACK_CAP,
+    );
+
+    match asm_core::parse_document(input.as_bytes(), &mut out) {
+        0 => Ok((out.nodes_len, out.attrs_len, out.roots_len)),
+        1 => Err(ParseError::NodeCapacityExceeded),
+        2 => Err(ParseError::AttributeCapacityExceeded),
+        3 => Err(ParseError::RootCapacityExceeded),
+        4 => Err(ParseError::StackCapacityExceeded),
+        _ => Err(ParseError::UnsupportedAssemblySyntax),
+    }
+}

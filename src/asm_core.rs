@@ -99,20 +99,20 @@ pub(crate) struct AsmNodeRecord {
     pub(crate) parent: u32,
     pub(crate) attr_start: u32,
     pub(crate) attr_count: u32,
-    pub(crate) start: usize,
-    pub(crate) len: usize,
-    pub(crate) name_start: usize,
-    pub(crate) name_len: usize,
+    pub(crate) start: u32,
+    pub(crate) len: u32,
+    pub(crate) name_start: u32,
+    pub(crate) name_len: u32,
 }
 
 #[cfg(feature = "std")]
 #[repr(C)]
 #[derive(Clone, Copy, Default)]
 pub(crate) struct AsmAttrRecord {
-    pub(crate) name_start: usize,
-    pub(crate) name_len: usize,
-    pub(crate) value_start: usize,
-    pub(crate) value_len: usize,
+    pub(crate) name_start: u32,
+    pub(crate) name_len: u32,
+    pub(crate) value_start: u32,
+    pub(crate) value_len: u32,
     pub(crate) has_value: u32,
     pub(crate) key_kind: u32,
 }

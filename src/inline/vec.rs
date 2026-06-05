@@ -58,6 +58,13 @@ impl<T, const N: usize> InlineVec<T, N> {
         self.0.push(value)
     }
 
+    /// Appends to inline storage and returns the value if the vector cannot
+    /// accept it without switching storage.
+    #[inline]
+    pub(crate) fn push_inline_unchecked(&mut self, value: T) -> Result<(), T> {
+        self.0.push_inline_unchecked(value)
+    }
+
     /// Returns a reference to the value at the given index
     #[inline]
     pub fn get(&self, index: usize) -> Option<&T> {
@@ -291,6 +298,18 @@ impl<T, const N: usize> InlineVecInner<T, N> {
             }
             #[cfg(feature = "std")]
             Self::Heap(h) => h.remove(idx),
+        }
+    }
+
+    #[inline]
+    fn push_inline_unchecked(&mut self, value: T) -> Result<(), T> {
+        match self {
+            Self::Inline { len, data } if *len < N => {
+                data[*len].write(value);
+                *len += 1;
+                Ok(())
+            }
+            _ => Err(value),
         }
     }
 

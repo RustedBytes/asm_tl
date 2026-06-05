@@ -1521,7 +1521,6 @@ rbtl_asm_parse_attr:
     mov qword ptr [rcx + 32], rdx
     mov dword ptr [rcx + 40], 1
     mov eax, 1
-    vzeroupper
     ret
 
 .Lparse_attr_empty_value:
@@ -1605,6 +1604,24 @@ rbtl_asm_parse_document:
     je .Ldoc_markup
 
     mov r8, r15
+    mov eax, '<'
+    vmovd xmm1, eax
+    vpbroadcastb ymm1, xmm1
+.Ldoc_text_vector_loop:
+    lea rax, [r15 + 32]
+    cmp rax, r13
+    ja .Ldoc_text_scan
+    vmovdqu ymm0, ymmword ptr [r12 + r15]
+    vpcmpeqb ymm0, ymm0, ymm1
+    vpmovmskb eax, ymm0
+    test eax, eax
+    jne .Ldoc_text_vector_hit
+    add r15, 32
+    jmp .Ldoc_text_vector_loop
+.Ldoc_text_vector_hit:
+    bsf eax, eax
+    add r15, rax
+    jmp .Ldoc_text_emit
 .Ldoc_text_scan:
     cmp r15, r13
     jae .Ldoc_text_emit
@@ -1771,18 +1788,18 @@ rbtl_asm_parse_document:
     cmp rax, qword ptr [r14 + 32]
     jae .Ldoc_attr_overflow
     mov rbx, rax
-    imul rbx, rbx, 40
+    imul rbx, rbx, 24
     add rbx, qword ptr [r14 + 24]
     mov rcx, qword ptr [rbp - 160]
-    mov qword ptr [rbx], rcx
+    mov dword ptr [rbx], ecx
     mov rcx, qword ptr [rbp - 152]
-    mov qword ptr [rbx + 8], rcx
+    mov dword ptr [rbx + 4], ecx
     mov rcx, qword ptr [rbp - 144]
-    mov qword ptr [rbx + 16], rcx
+    mov dword ptr [rbx + 8], ecx
     mov rcx, qword ptr [rbp - 136]
-    mov qword ptr [rbx + 24], rcx
+    mov dword ptr [rbx + 12], ecx
     mov ecx, dword ptr [rbp - 120]
-    mov dword ptr [rbx + 32], ecx
+    mov dword ptr [rbx + 16], ecx
     xor ecx, ecx
     cmp qword ptr [rbp - 152], 2
     jne .Ldoc_attr_check_class
@@ -1809,7 +1826,7 @@ rbtl_asm_parse_document:
     jne .Ldoc_attr_key_done
     mov ecx, 2
 .Ldoc_attr_key_done:
-    mov dword ptr [rbx + 36], ecx
+    mov dword ptr [rbx + 20], ecx
     inc qword ptr [r14 + 40]
 
     mov r15, qword ptr [rbp - 128]
@@ -1897,15 +1914,15 @@ rbtl_asm_parse_document:
     mov rbx, qword ptr [r14 + 72]
     mov edx, dword ptr [rbx + rax * 4]
     mov rbx, rdx
-    imul rbx, rbx, 56
+    imul rbx, rbx, 36
     add rbx, qword ptr [r14]
-    cmp r9, qword ptr [rbx + 48]
+    cmp r9d, dword ptr [rbx + 32]
     jne .Ldoc_loop
     xor rcx, rcx
 .Ldoc_end_cmp:
     cmp rcx, r9
     jae .Ldoc_end_match
-    mov r10, qword ptr [rbx + 40]
+    mov r10d, dword ptr [rbx + 28]
     lea rdi, [r12 + r8]
     add rdi, rcx
     mov r11b, byte ptr [rdi]
@@ -1918,8 +1935,8 @@ rbtl_asm_parse_document:
 .Ldoc_end_match:
     mov qword ptr [r14 + 88], rax
     mov r10, r15
-    sub r10, qword ptr [rbx + 24]
-    mov qword ptr [rbx + 32], r10
+    sub r10d, dword ptr [rbx + 20]
+    mov dword ptr [rbx + 24], r10d
     jmp .Ldoc_loop
 
 .Ldoc_emit_node:
@@ -1927,16 +1944,16 @@ rbtl_asm_parse_document:
     cmp rax, qword ptr [r14 + 8]
     jae .Ldoc_emit_node_overflow
     mov rbx, rax
-    imul rbx, rbx, 56
+    imul rbx, rbx, 36
     add rbx, qword ptr [r14]
     mov dword ptr [rbx], edi
     mov dword ptr [rbx + 4], 0
     mov dword ptr [rbx + 12], edx
     mov dword ptr [rbx + 16], ecx
-    mov qword ptr [rbx + 24], r8
-    mov qword ptr [rbx + 32], r9
-    mov qword ptr [rbx + 40], r10
-    mov qword ptr [rbx + 48], r11
+    mov dword ptr [rbx + 20], r8d
+    mov dword ptr [rbx + 24], r9d
+    mov dword ptr [rbx + 28], r10d
+    mov dword ptr [rbx + 32], r11d
     mov rcx, qword ptr [r14 + 88]
     test rcx, rcx
     je .Ldoc_emit_root
@@ -2019,6 +2036,7 @@ rbtl_asm_parse_document:
     xor eax, eax
 .Ldoc_ret_status:
     mov dword ptr [r14 + 100], eax
+    vzeroupper
     add rsp, 216
     pop r15
     pop r14
