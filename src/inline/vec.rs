@@ -16,6 +16,14 @@ impl<T, const N: usize> InlineVec<T, N> {
         Self(InlineVecInner::new())
     }
 
+    /// Creates an InlineVec with enough heap capacity when the requested
+    /// capacity exceeds the inline storage.
+    #[inline]
+    #[cfg(feature = "std")]
+    pub(crate) fn with_capacity(capacity: usize) -> Self {
+        Self(InlineVecInner::with_capacity(capacity))
+    }
+
     /// Returns the number of elements in the vector
     #[inline]
     pub fn len(&self) -> usize {
@@ -180,6 +188,16 @@ impl<T, const N: usize> InlineVecInner<T, N> {
         Self::Inline {
             len: 0,
             data: super::uninit_array(),
+        }
+    }
+
+    #[inline]
+    #[cfg(feature = "std")]
+    pub(crate) fn with_capacity(capacity: usize) -> Self {
+        if capacity > N {
+            Self::Heap(Vec::with_capacity(capacity))
+        } else {
+            Self::new()
         }
     }
 

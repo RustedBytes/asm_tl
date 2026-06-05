@@ -653,9 +653,11 @@ impl<
         self.stack.clear();
         self.version = (version == 1).then_some(HTMLVersion::HTML5);
 
-        let mut tags = Vec::with_capacity(node_records.len());
+        let mut tags = Vec::<Node<'a>>::with_capacity(node_records.len());
 
-        for record in node_records {
+        let mut written = 0;
+        let tags_ptr: *mut Node<'a> = tags.as_mut_ptr();
+        for (idx, record) in node_records.iter().enumerate() {
             let node = match record.kind {
                 1 => Node::Raw(self.asm_slice_fast(record.start, record.len).into()),
                 2 => {
@@ -663,16 +665,27 @@ impl<
                     Node::Tag(HTMLTag::new(
                         self.asm_slice_fast(record.name_start, record.name_len).into(),
                         attr,
-                        InlineVec::new(),
+                        InlineVec::with_capacity(record.flags as usize),
                         self.asm_slice_fast(record.start, record.len).into(),
                     ))
                 }
                 3 => {
                     Node::Comment(self.asm_slice_fast(record.start, record.len).into())
                 }
-                _ => return Err(ParseError::UnsupportedAssemblySyntax),
+                _ => {
+                    unsafe {
+                        tags.set_len(written);
+                    }
+                    return Err(ParseError::UnsupportedAssemblySyntax);
+                }
             };
-            tags.push(node);
+            unsafe {
+                tags_ptr.add(idx).write(node);
+            }
+            written = idx + 1;
+        }
+        unsafe {
+            tags.set_len(written);
         }
 
         self.tags = tags;

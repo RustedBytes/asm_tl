@@ -1961,6 +1961,10 @@ rbtl_asm_parse_document:
     mov rdx, qword ptr [r14 + 72]
     mov edx, dword ptr [rdx + rcx * 4]
     mov dword ptr [rbx + 8], edx
+    mov r10, rdx
+    imul r10, r10, 36
+    add r10, qword ptr [r14]
+    inc dword ptr [r10 + 4]
     jmp .Ldoc_emit_done_parent
 .Ldoc_emit_root:
     mov dword ptr [rbx + 8], 0xffffffff
