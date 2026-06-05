@@ -19,15 +19,16 @@ pub fn search_non_ident(haystack: &[u8]) -> Option<usize> {
 }
 
 /// Searches for the first occurrence of any of 3 bytes in `haystack`
+#[allow(dead_code)]
 #[inline]
 pub fn find3(haystack: &[u8], needle: [u8; 3]) -> Option<usize> {
-    asm_core::find3(haystack, needle)
+    memchr::memchr3(needle[0], needle[1], needle[2], haystack)
 }
 
 /// Searches for the first occurence of `needle` in `haystack`
 #[inline]
 pub fn find(haystack: &[u8], needle: u8) -> Option<usize> {
-    asm_core::find(haystack, needle)
+    memchr::memchr(needle, haystack)
 }
 
 /// Checks if the ASCII characters in `haystack` match `needle` (case insensitive)

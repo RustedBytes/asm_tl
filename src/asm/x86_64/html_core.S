@@ -7,23 +7,22 @@
 rbtl_asm_find:
     xor rax, rax
     movd xmm1, edx
-    punpcklbw xmm1, xmm1
-    punpcklwd xmm1, xmm1
-    pshufd xmm1, xmm1, 0
+    vpbroadcastb ymm1, xmm1
 .Lfind_vector_loop:
-    lea r8, [rax + 16]
+    lea r8, [rax + 32]
     cmp r8, rsi
     ja .Lfind_loop
-    movdqu xmm0, xmmword ptr [rdi + rax]
-    pcmpeqb xmm0, xmm1
-    pmovmskb r8d, xmm0
+    vmovdqu ymm0, ymmword ptr [rdi + rax]
+    vpcmpeqb ymm0, ymm0, ymm1
+    vpmovmskb r8d, ymm0
     test r8d, r8d
     jne .Lfind_vector_hit
-    add rax, 16
+    add rax, 32
     jmp .Lfind_vector_loop
 .Lfind_vector_hit:
     bsf r8d, r8d
     add rax, r8
+    vzeroupper
     ret
 .Lfind_loop:
     cmp rax, rsi
@@ -35,6 +34,7 @@ rbtl_asm_find:
 .Lfind_none:
     mov rax, rsi
 .Lfind_ret:
+    vzeroupper
     ret
 .size rbtl_asm_find, .-rbtl_asm_find
 
@@ -45,35 +45,28 @@ rbtl_asm_find3:
     movd xmm1, edx
     movd xmm2, ecx
     movd xmm3, r8d
-    punpcklbw xmm1, xmm1
-    punpcklwd xmm1, xmm1
-    pshufd xmm1, xmm1, 0
-    punpcklbw xmm2, xmm2
-    punpcklwd xmm2, xmm2
-    pshufd xmm2, xmm2, 0
-    punpcklbw xmm3, xmm3
-    punpcklwd xmm3, xmm3
-    pshufd xmm3, xmm3, 0
+    vpbroadcastb ymm1, xmm1
+    vpbroadcastb ymm2, xmm2
+    vpbroadcastb ymm3, xmm3
 .Lfind3_vector_loop:
-    lea r9, [rax + 16]
+    lea r9, [rax + 32]
     cmp r9, rsi
     ja .Lfind3_loop
-    movdqu xmm0, xmmword ptr [rdi + rax]
-    movdqa xmm4, xmm0
-    movdqa xmm5, xmm0
-    pcmpeqb xmm0, xmm1
-    pcmpeqb xmm4, xmm2
-    pcmpeqb xmm5, xmm3
-    por xmm0, xmm4
-    por xmm0, xmm5
-    pmovmskb r9d, xmm0
+    vmovdqu ymm0, ymmword ptr [rdi + rax]
+    vpcmpeqb ymm4, ymm0, ymm1
+    vpcmpeqb ymm5, ymm0, ymm2
+    vpcmpeqb ymm0, ymm0, ymm3
+    vpor ymm4, ymm4, ymm5
+    vpor ymm0, ymm0, ymm4
+    vpmovmskb r9d, ymm0
     test r9d, r9d
     jne .Lfind3_vector_hit
-    add rax, 16
+    add rax, 32
     jmp .Lfind3_vector_loop
 .Lfind3_vector_hit:
     bsf r9d, r9d
     add rax, r9
+    vzeroupper
     ret
 .Lfind3_loop:
     cmp rax, rsi
@@ -90,6 +83,7 @@ rbtl_asm_find3:
 .Lfind3_none:
     mov rax, rsi
 .Lfind3_ret:
+    vzeroupper
     ret
 .size rbtl_asm_find3, .-rbtl_asm_find3
 
@@ -401,31 +395,26 @@ rbtl_asm_count_while2:
     xor rax, rax
     movd xmm1, edx
     movd xmm2, ecx
-    punpcklbw xmm1, xmm1
-    punpcklwd xmm1, xmm1
-    pshufd xmm1, xmm1, 0
-    punpcklbw xmm2, xmm2
-    punpcklwd xmm2, xmm2
-    pshufd xmm2, xmm2, 0
+    vpbroadcastb ymm1, xmm1
+    vpbroadcastb ymm2, xmm2
 .Lcount_while2_vector_loop:
-    lea r8, [rax + 16]
+    lea r8, [rax + 32]
     cmp r8, rsi
     ja .Lcount_while2_loop
-    movdqu xmm0, xmmword ptr [rdi + rax]
-    movdqa xmm3, xmm0
-    pcmpeqb xmm0, xmm1
-    pcmpeqb xmm3, xmm2
-    por xmm0, xmm3
-    pmovmskb r8d, xmm0
-    cmp r8d, 0xffff
+    vmovdqu ymm0, ymmword ptr [rdi + rax]
+    vpcmpeqb ymm3, ymm0, ymm1
+    vpcmpeqb ymm0, ymm0, ymm2
+    vpor ymm0, ymm0, ymm3
+    vpmovmskb r8d, ymm0
+    cmp r8d, -1
     jne .Lcount_while2_vector_hit
-    add rax, 16
+    add rax, 32
     jmp .Lcount_while2_vector_loop
 .Lcount_while2_vector_hit:
-    xor r8d, 0xffff
-    and r8d, 0xffff
+    not r8d
     bsf r8d, r8d
     add rax, r8
+    vzeroupper
     ret
 .Lcount_while2_loop:
     cmp rax, rsi
@@ -440,6 +429,7 @@ rbtl_asm_count_while2:
     inc rax
     jmp .Lcount_while2_loop
 .Lcount_while2_ret:
+    vzeroupper
     ret
 .size rbtl_asm_count_while2, .-rbtl_asm_count_while2
 
@@ -1285,19 +1275,19 @@ rbtl_asm_scan_html_event:
 
 .Lscan_event_text:
     mov r9, rdx
-    mov eax, 0x3c3c3c3c
+    mov eax, '<'
     movd xmm1, eax
-    pshufd xmm1, xmm1, 0
+    vpbroadcastb ymm1, xmm1
 .Lscan_event_text_vector_loop:
-    lea r10, [r9 + 16]
+    lea r10, [r9 + 32]
     cmp r10, rsi
     ja .Lscan_event_text_loop
-    movdqu xmm0, xmmword ptr [rdi + r9]
-    pcmpeqb xmm0, xmm1
-    pmovmskb eax, xmm0
+    vmovdqu ymm0, ymmword ptr [rdi + r9]
+    vpcmpeqb ymm0, ymm0, ymm1
+    vpmovmskb eax, ymm0
     test eax, eax
     jne .Lscan_event_text_vector_hit
-    add r9, 16
+    add r9, 32
     jmp .Lscan_event_text_vector_loop
 .Lscan_event_text_vector_hit:
     bsf eax, eax
@@ -1316,6 +1306,7 @@ rbtl_asm_scan_html_event:
     mov qword ptr [r8], r10
     mov eax, 1
 .Lscan_event_ret:
+    vzeroupper
     ret
 .size rbtl_asm_scan_html_event, .-rbtl_asm_scan_html_event
 
@@ -1362,6 +1353,206 @@ rbtl_asm_next_ascii_token:
     lea rax, [rsi + 1]
     ret
 .size rbtl_asm_next_ascii_token, .-rbtl_asm_next_ascii_token
+
+.globl rbtl_asm_parse_attr
+.type rbtl_asm_parse_attr, @function
+rbtl_asm_parse_attr:
+    cmp rdx, rsi
+    jae .Lparse_attr_none
+
+    mov r8, rdx
+    mov r9b, byte ptr [rdi + rdx]
+    call .Lparse_attr_is_ident
+    test r11d, r11d
+    je .Lparse_attr_none
+
+.Lparse_attr_name_loop:
+    inc rdx
+    cmp rdx, rsi
+    jae .Lparse_attr_name_done
+    mov r9b, byte ptr [rdi + rdx]
+    call .Lparse_attr_is_ident
+    test r11d, r11d
+    jne .Lparse_attr_name_loop
+
+.Lparse_attr_name_done:
+    mov qword ptr [rcx], r8
+    mov r10, rdx
+    sub r10, r8
+    mov qword ptr [rcx + 8], r10
+
+.Lparse_attr_skip_ws:
+    cmp rdx, rsi
+    jae .Lparse_attr_no_value
+    mov r9b, byte ptr [rdi + rdx]
+    cmp r9b, ' '
+    je .Lparse_attr_skip_one
+    cmp r9b, 10
+    je .Lparse_attr_skip_one
+    jmp .Lparse_attr_after_ws
+.Lparse_attr_skip_one:
+    inc rdx
+    jmp .Lparse_attr_skip_ws
+
+.Lparse_attr_after_ws:
+    cmp r9b, '='
+    jne .Lparse_attr_no_value
+    inc rdx
+
+.Lparse_attr_value_skip_ws:
+    cmp rdx, rsi
+    jae .Lparse_attr_empty_value
+    mov r9b, byte ptr [rdi + rdx]
+    cmp r9b, ' '
+    je .Lparse_attr_value_skip_one
+    cmp r9b, 10
+    je .Lparse_attr_value_skip_one
+    jmp .Lparse_attr_value_start
+.Lparse_attr_value_skip_one:
+    inc rdx
+    jmp .Lparse_attr_value_skip_ws
+
+.Lparse_attr_value_start:
+    cmp r9b, '"'
+    je .Lparse_attr_quoted
+    cmp r9b, 39
+    je .Lparse_attr_quoted
+
+    mov r8, rdx
+.Lparse_attr_unquoted_vector_setup:
+    mov eax, ' '
+    movd xmm1, eax
+    vpbroadcastb ymm1, xmm1
+    mov eax, 10
+    movd xmm2, eax
+    vpbroadcastb ymm2, xmm2
+    mov eax, '>'
+    movd xmm3, eax
+    vpbroadcastb ymm3, xmm3
+.Lparse_attr_unquoted_vector_loop:
+    lea r11, [rdx + 32]
+    cmp r11, rsi
+    ja .Lparse_attr_unquoted_loop
+    vmovdqu ymm0, ymmword ptr [rdi + rdx]
+    vpcmpeqb ymm4, ymm0, ymm1
+    vpcmpeqb ymm5, ymm0, ymm2
+    vpcmpeqb ymm0, ymm0, ymm3
+    vpor ymm4, ymm4, ymm5
+    vpor ymm0, ymm0, ymm4
+    vpmovmskb eax, ymm0
+    test eax, eax
+    jne .Lparse_attr_unquoted_vector_hit
+    add rdx, 32
+    jmp .Lparse_attr_unquoted_vector_loop
+.Lparse_attr_unquoted_vector_hit:
+    bsf eax, eax
+    add rdx, rax
+    jmp .Lparse_attr_emit_value
+.Lparse_attr_unquoted_loop:
+    cmp rdx, rsi
+    jae .Lparse_attr_emit_value
+    mov r9b, byte ptr [rdi + rdx]
+    cmp r9b, ' '
+    je .Lparse_attr_emit_value
+    cmp r9b, 10
+    je .Lparse_attr_emit_value
+    cmp r9b, '>'
+    je .Lparse_attr_emit_value
+    inc rdx
+    jmp .Lparse_attr_unquoted_loop
+
+.Lparse_attr_quoted:
+    mov r10b, r9b
+    inc rdx
+    mov r8, rdx
+.Lparse_attr_quoted_vector_setup:
+    movzx eax, r10b
+    movd xmm1, eax
+    vpbroadcastb ymm1, xmm1
+.Lparse_attr_quoted_vector_loop:
+    lea r11, [rdx + 32]
+    cmp r11, rsi
+    ja .Lparse_attr_quoted_loop
+    vmovdqu ymm0, ymmword ptr [rdi + rdx]
+    vpcmpeqb ymm0, ymm0, ymm1
+    vpmovmskb eax, ymm0
+    test eax, eax
+    jne .Lparse_attr_quoted_vector_hit
+    add rdx, 32
+    jmp .Lparse_attr_quoted_vector_loop
+.Lparse_attr_quoted_vector_hit:
+    bsf eax, eax
+    add rdx, rax
+    jmp .Lparse_attr_emit_value
+.Lparse_attr_quoted_loop:
+    cmp rdx, rsi
+    jae .Lparse_attr_emit_value
+    cmp byte ptr [rdi + rdx], r10b
+    je .Lparse_attr_emit_value
+    inc rdx
+    jmp .Lparse_attr_quoted_loop
+
+.Lparse_attr_emit_value:
+    mov qword ptr [rcx + 16], r8
+    mov r10, rdx
+    sub r10, r8
+    mov qword ptr [rcx + 24], r10
+    mov qword ptr [rcx + 32], rdx
+    mov dword ptr [rcx + 40], 1
+    mov eax, 1
+    vzeroupper
+    ret
+
+.Lparse_attr_empty_value:
+    mov qword ptr [rcx + 16], rdx
+    mov qword ptr [rcx + 24], 0
+    mov qword ptr [rcx + 32], rdx
+    mov dword ptr [rcx + 40], 1
+    mov eax, 1
+    ret
+
+.Lparse_attr_no_value:
+    mov qword ptr [rcx + 16], rdx
+    mov qword ptr [rcx + 24], 0
+    mov qword ptr [rcx + 32], rdx
+    mov dword ptr [rcx + 40], 0
+    mov eax, 1
+    ret
+
+.Lparse_attr_none:
+    xor eax, eax
+    ret
+
+.Lparse_attr_is_ident:
+    xor r11d, r11d
+    cmp r9b, '0'
+    jb .Lparse_attr_ident_symbols
+    cmp r9b, '9'
+    jbe .Lparse_attr_ident_yes
+    cmp r9b, 'A'
+    jb .Lparse_attr_ident_symbols
+    cmp r9b, 'Z'
+    jbe .Lparse_attr_ident_yes
+    cmp r9b, 'a'
+    jb .Lparse_attr_ident_symbols
+    cmp r9b, 'z'
+    jbe .Lparse_attr_ident_yes
+.Lparse_attr_ident_symbols:
+    cmp r9b, '-'
+    je .Lparse_attr_ident_yes
+    cmp r9b, '_'
+    je .Lparse_attr_ident_yes
+    cmp r9b, '/'
+    je .Lparse_attr_ident_yes
+    cmp r9b, ':'
+    je .Lparse_attr_ident_yes
+    cmp r9b, '+'
+    je .Lparse_attr_ident_yes
+    ret
+.Lparse_attr_ident_yes:
+    mov r11d, 1
+    ret
+.size rbtl_asm_parse_attr, .-rbtl_asm_parse_attr
 
 .globl rbtl_asm_simple_selector_kind
 .type rbtl_asm_simple_selector_kind, @function

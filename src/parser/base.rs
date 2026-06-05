@@ -20,12 +20,12 @@ type StorageMap<K, V, const N: usize> = InlineHashMap<K, V, N>;
 type StorageMap<K, V, const N: usize> = InlineHashMap<K, V, N>;
 
 #[cfg(feature = "std")]
-fn new_vec<T, const N: usize>() -> StorageVec<T, N> {
-    std::vec::Vec::new()
+fn new_vec_with_capacity<T, const N: usize>(capacity: usize) -> StorageVec<T, N> {
+    std::vec::Vec::with_capacity(capacity)
 }
 
 #[cfg(not(feature = "std"))]
-fn new_vec<T, const N: usize>() -> StorageVec<T, N> {
+fn new_vec_with_capacity<T, const N: usize>(_capacity: usize) -> StorageVec<T, N> {
     InlineVec::new()
 }
 
@@ -151,12 +151,13 @@ impl<
 > Parser<'a, MAX_NODES, MAX_STACK, MAX_ROOTS, MAX_IDS, MAX_CLASSES, MAX_SELECTOR_NODES>
 {
     pub(crate) fn new(input: &'a str, options: ParserOptions) -> Self {
+        let node_capacity = (input.len() / 48).clamp(8, 256);
         Parser {
-            stack: new_vec::<NodeHandle, MAX_STACK>(),
+            stack: new_vec_with_capacity::<NodeHandle, MAX_STACK>(16),
             options,
-            tags: new_vec::<Node<'a>, MAX_NODES>(),
+            tags: new_vec_with_capacity::<Node<'a>, MAX_NODES>(node_capacity),
             stream: Stream::new(input.as_bytes()),
-            ast: new_vec::<NodeHandle, MAX_ROOTS>(),
+            ast: new_vec_with_capacity::<NodeHandle, MAX_ROOTS>(8),
             ids: new_map::<Bytes<'a>, NodeHandle, MAX_IDS>(),
             classes: new_map::<Bytes<'a>, ClassVec<MAX_NODES>, MAX_CLASSES>(),
             version: None,
@@ -181,16 +182,6 @@ impl<
         let bytes = &self.stream.data()[start..];
 
         let end = simd::find(bytes, needle).unwrap_or_else(|| self.stream.len() - start);
-
-        self.stream.idx += end;
-        self.stream.slice(start, start + end)
-    }
-
-    fn read_to3(&mut self, needle: [u8; 3]) -> &'a [u8] {
-        let start = self.stream.idx;
-        let bytes = &self.stream.data()[start..];
-
-        let end = simd::find3(bytes, needle).unwrap_or_else(|| self.stream.len() - start);
 
         self.stream.idx += end;
         self.stream.slice(start, start + end)
@@ -224,28 +215,17 @@ impl<
     }
 
     fn parse_attribute(&mut self) -> Option<(&'a [u8], Option<&'a [u8]>)> {
-        let name = self.read_ident()?;
-        self.skip_whitespaces();
+        let attr = asm_core::parse_attr(self.stream.data(), self.stream.idx)?;
+        self.stream.idx = attr.next_idx;
 
-        let has_value = asm_core::byte_at_eq(self.stream.data(), self.stream.idx, b'=');
-        if has_value {
-            self.stream.advance();
-        }
-        if !has_value {
-            return Some((name, None));
-        }
+        let name = self
+            .stream
+            .slice(attr.name_start, attr.name_start + attr.name_len);
 
-        self.skip_whitespaces();
+        let value = (attr.has_value != 0)
+            .then(|| self.stream.slice(attr.value_start, attr.value_start + attr.value_len));
 
-        let value =
-            if let Some(quote) = self.stream.current_cpy().filter(|&c| asm_core::is_quote(c)) {
-                self.stream.advance();
-                self.read_to(quote)
-            } else {
-                self.read_to3([b' ', b'\n', b'>'])
-            };
-
-        Some((name, Some(value)))
+        Some((name, value))
     }
 
     fn parse_attributes(&mut self) -> Result<Option<Attributes<'a>>, ParseError> {

@@ -10,8 +10,8 @@ use std::borrow::Cow;
 
 use super::{Parser, handle::NodeHandle};
 
-const INLINED_ATTRIBUTES: usize = 8;
-const INLINED_SUBNODES: usize = 256;
+const INLINED_ATTRIBUTES: usize = 4;
+const INLINED_SUBNODES: usize = 4;
 /// The type of map for "raw" attributes
 pub type RawAttributesMap<'a> = InlineHashMap<Bytes<'a>, Option<Bytes<'a>>, INLINED_ATTRIBUTES>;
 

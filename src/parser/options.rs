@@ -1,8 +1,7 @@
-use crate::asm_core;
-
 mod flags {
     pub const TRACK_IDS: u8 = 1 << 0;
     pub const TRACK_CLASSES: u8 = 1 << 1;
+    pub const HIGHEST: u8 = TRACK_CLASSES;
 }
 
 /// Options for the HTML Parser
@@ -24,7 +23,7 @@ impl ParserOptions {
 
     /// Creates a [ParserOptions] from a bitset
     pub fn from_raw_checked(flags: u8) -> Option<Self> {
-        asm_core::parser_flags_valid(flags).then_some(Self { flags })
+        (flags <= flags::HIGHEST * 2 - 1).then_some(Self { flags })
     }
 
     /// Returns the raw flags of this bitset
@@ -33,7 +32,12 @@ impl ParserOptions {
     }
 
     fn set_flag(&mut self, flag: u8) {
-        self.flags = asm_core::parser_set_flag(self.flags, flag);
+        self.flags |= flag;
+    }
+
+    #[inline]
+    fn has_flag(&self, flag: u8) -> bool {
+        self.flags & flag != 0
     }
 
     /// Enables tracking of HTML Tag IDs and stores them in a lookup table.
@@ -55,18 +59,18 @@ impl ParserOptions {
     /// Returns whether the parser is tracking HTML Tag IDs.
     #[inline]
     pub fn is_tracking_ids(&self) -> bool {
-        asm_core::parser_is_tracking_ids(self.flags)
+        self.has_flag(flags::TRACK_IDS)
     }
 
     /// Returns whether the parser is tracking HTML Tag classes.
     #[inline]
     pub fn is_tracking_classes(&self) -> bool {
-        asm_core::parser_is_tracking_classes(self.flags)
+        self.has_flag(flags::TRACK_CLASSES)
     }
 
     /// Returns whether the parser is tracking HTML Tag IDs or classes (previously enabled by a call to `track_ids()` or `track_classes()`).
     #[inline]
     pub fn is_tracking(&self) -> bool {
-        asm_core::parser_is_tracking(self.flags)
+        self.flags != 0
     }
 }
