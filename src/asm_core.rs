@@ -1,7 +1,10 @@
 #![allow(dead_code)]
 
-#[cfg(not(all(target_arch = "x86_64", target_os = "linux")))]
-compile_error!("asm-tl assembly core currently supports only x86_64 Linux");
+#[cfg(not(any(
+    all(target_arch = "x86_64", target_os = "linux"),
+    all(target_arch = "x86_64", target_os = "windows", target_env = "msvc")
+)))]
+compile_error!("asm-tl assembly core currently supports only x86_64 Linux and x86_64 Windows MSVC");
 
 unsafe extern "C" {
     fn rbtl_asm_search_non_ident(ptr: *const u8, len: usize) -> usize;
@@ -431,4 +434,447 @@ pub(crate) fn simple_selector_kind(input: &[u8]) -> (u32, usize) {
     let mut tag_len = 0;
     let kind = unsafe { rbtl_asm_simple_selector_kind(input.as_ptr(), input.len(), &mut tag_len) };
     (kind, tag_len)
+}
+
+#[cfg(all(target_arch = "x86_64", target_os = "windows", target_env = "msvc"))]
+mod msvc_helpers {
+    use super::{AsmAttr, AsmAttrRecord, AsmNodeRecord, AsmParseOutput};
+
+    #[inline]
+    fn is_ident(byte: u8) -> bool {
+        byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'/' | b':' | b'+')
+    }
+
+    #[inline]
+    fn is_ws(byte: u8) -> bool {
+        byte == b' ' || byte == b'\n'
+    }
+
+    #[inline]
+    fn is_void_tag_bytes(tag: &[u8]) -> bool {
+        matches!(
+            tag,
+            b"area"
+                | b"base"
+                | b"br"
+                | b"col"
+                | b"command"
+                | b"embed"
+                | b"hr"
+                | b"img"
+                | b"input"
+                | b"keygen"
+                | b"link"
+                | b"meta"
+                | b"param"
+                | b"source"
+                | b"track"
+                | b"wbr"
+        )
+    }
+
+    #[inline]
+    fn eq_ascii_ci(left: &[u8], right: &[u8]) -> bool {
+        left.len() == right.len()
+            && left
+                .iter()
+                .zip(right)
+                .all(|(&l, &r)| l.to_ascii_lowercase() == r)
+    }
+
+    fn parse_attr_at(input: &[u8], mut idx: usize) -> Option<AsmAttr> {
+        if idx >= input.len() {
+            return None;
+        }
+
+        let name_start = idx;
+        while idx < input.len() && is_ident(input[idx]) {
+            idx += 1;
+        }
+        if idx == name_start {
+            return None;
+        }
+        let name_len = idx - name_start;
+
+        while idx < input.len() && is_ws(input[idx]) {
+            idx += 1;
+        }
+
+        if input.get(idx) != Some(&b'=') {
+            return Some(AsmAttr {
+                name_start,
+                name_len,
+                value_start: idx,
+                value_len: 0,
+                next_idx: idx,
+                has_value: 0,
+            });
+        }
+
+        idx += 1;
+        while idx < input.len() && is_ws(input[idx]) {
+            idx += 1;
+        }
+
+        if idx >= input.len() {
+            return Some(AsmAttr {
+                name_start,
+                name_len,
+                value_start: idx,
+                value_len: 0,
+                next_idx: idx,
+                has_value: 1,
+            });
+        }
+
+        let value_start;
+        let value_len;
+        if matches!(input[idx], b'"' | b'\'') {
+            let quote = input[idx];
+            idx += 1;
+            value_start = idx;
+            while idx < input.len() && input[idx] != quote {
+                idx += 1;
+            }
+            value_len = idx - value_start;
+        } else {
+            value_start = idx;
+            while idx < input.len() && !matches!(input[idx], b' ' | b'\n' | b'>') {
+                idx += 1;
+            }
+            value_len = idx - value_start;
+        }
+
+        Some(AsmAttr {
+            name_start,
+            name_len,
+            value_start,
+            value_len,
+            next_idx: idx,
+            has_value: 1,
+        })
+    }
+
+    unsafe fn emit_node(
+        out: *mut AsmParseOutput,
+        stack: &mut Vec<u32>,
+        kind: u32,
+        start: usize,
+        len: usize,
+        name_start: usize,
+        name_len: usize,
+        attr_start: usize,
+        attr_count: usize,
+    ) -> Result<u32, u32> {
+        let out_ref = unsafe { &mut *out };
+        if out_ref.nodes_len >= out_ref.nodes_cap {
+            return Err(1);
+        }
+
+        let idx = out_ref.nodes_len;
+        let parent = stack.last().copied().unwrap_or(u32::MAX);
+        let record = AsmNodeRecord {
+            kind,
+            flags: 0,
+            parent,
+            attr_start: attr_start as u32,
+            attr_count: attr_count as u32,
+            start: start as u32,
+            len: len as u32,
+            name_start: name_start as u32,
+            name_len: name_len as u32,
+        };
+        unsafe {
+            out_ref.nodes_ptr.add(idx).write(record);
+        }
+        out_ref.nodes_len += 1;
+
+        if parent == u32::MAX {
+            if !out_ref.roots_ptr.is_null() {
+                if out_ref.roots_len >= out_ref.roots_cap {
+                    return Err(3);
+                }
+                unsafe {
+                    out_ref.roots_ptr.add(out_ref.roots_len).write(idx as u32);
+                }
+            }
+            out_ref.roots_len += 1;
+        } else {
+            unsafe {
+                let parent_record = &mut *out_ref.nodes_ptr.add(parent as usize);
+                parent_record.flags = parent_record.flags.saturating_add(1);
+            }
+        }
+
+        Ok(idx as u32)
+    }
+
+    #[unsafe(no_mangle)]
+    pub unsafe extern "C" fn rbtl_rust_msvc_parse_attr(
+        ptr: *const u8,
+        len: usize,
+        idx: usize,
+        out: *mut AsmAttr,
+    ) -> u32 {
+        if out.is_null() {
+            return 0;
+        }
+        let input = unsafe { core::slice::from_raw_parts(ptr, len) };
+        let Some(attr) = parse_attr_at(input, idx) else {
+            return 0;
+        };
+        unsafe {
+            out.write(attr);
+        }
+        1
+    }
+
+    #[unsafe(no_mangle)]
+    pub unsafe extern "C" fn rbtl_rust_msvc_parse_document(
+        ptr: *const u8,
+        len: usize,
+        out: *mut AsmParseOutput,
+    ) -> u32 {
+        if out.is_null() || len > u32::MAX as usize {
+            return 5;
+        }
+
+        let input = unsafe { core::slice::from_raw_parts(ptr, len) };
+        let out_ref = unsafe { &mut *out };
+        out_ref.nodes_len = 0;
+        out_ref.attrs_len = 0;
+        out_ref.roots_len = 0;
+        out_ref.stack_len = 0;
+        out_ref.version = 0;
+        out_ref.error = 0;
+
+        let mut stack = Vec::<u32>::with_capacity(out_ref.stack_cap);
+        let mut idx = 0usize;
+
+        while idx < input.len() {
+            if input[idx] != b'<' {
+                let start = idx;
+                while idx < input.len() && input[idx] != b'<' {
+                    idx += 1;
+                }
+                if idx > start {
+                    let status =
+                        unsafe { emit_node(out, &mut stack, 1, start, idx - start, 0, 0, 0, 0) };
+                    if let Err(status) = status {
+                        out_ref.error = status;
+                        return status;
+                    }
+                }
+                continue;
+            }
+
+            let markup_start = idx;
+            if idx + 1 >= input.len() {
+                idx += 1;
+                let status = unsafe { emit_node(out, &mut stack, 1, markup_start, 1, 0, 0, 0, 0) };
+                if let Err(status) = status {
+                    out_ref.error = status;
+                    return status;
+                }
+                continue;
+            }
+
+            match input[idx + 1] {
+                b'/' => {
+                    idx += 2;
+                    while idx < input.len() && is_ws(input[idx]) {
+                        idx += 1;
+                    }
+                    let name_start = idx;
+                    while idx < input.len() && input[idx] != b'>' {
+                        idx += 1;
+                    }
+                    let name_len = idx - name_start;
+                    if idx < input.len() && input[idx] == b'>' {
+                        idx += 1;
+                    }
+
+                    let Some(&open_idx) = stack.last() else {
+                        continue;
+                    };
+                    let open = unsafe { &mut *out_ref.nodes_ptr.add(open_idx as usize) };
+                    let open_name = &input[open.name_start as usize
+                        ..open.name_start as usize + open.name_len as usize];
+                    if open_name == &input[name_start..name_start + name_len] {
+                        stack.pop();
+                        out_ref.stack_len = stack.len();
+                        open.len = (idx - open.start as usize) as u32;
+                    }
+                }
+                b'!' => {
+                    if idx + 3 < input.len() && &input[idx + 2..idx + 4] == b"--" {
+                        idx += 4;
+                        while idx + 2 < input.len() && &input[idx..idx + 3] != b"-->" {
+                            idx += 1;
+                        }
+                        if idx + 2 < input.len() {
+                            idx += 3;
+                        } else {
+                            idx = input.len();
+                        }
+                        let status = unsafe {
+                            emit_node(
+                                out,
+                                &mut stack,
+                                3,
+                                markup_start,
+                                idx - markup_start,
+                                0,
+                                0,
+                                0,
+                                0,
+                            )
+                        };
+                        if let Err(status) = status {
+                            out_ref.error = status;
+                            return status;
+                        }
+                    } else {
+                        idx += 2;
+                        while idx < input.len() && is_ws(input[idx]) {
+                            idx += 1;
+                        }
+                        let word_start = idx;
+                        while idx < input.len() && is_ident(input[idx]) {
+                            idx += 1;
+                        }
+                        if !eq_ascii_ci(&input[word_start..idx], b"doctype") {
+                            out_ref.error = 5;
+                            return 5;
+                        }
+                        while idx < input.len() && is_ws(input[idx]) {
+                            idx += 1;
+                        }
+                        let value_start = idx;
+                        while idx < input.len() && is_ident(input[idx]) {
+                            idx += 1;
+                        }
+                        if eq_ascii_ci(&input[value_start..idx], b"html") {
+                            out_ref.version = 1;
+                        }
+                        while idx < input.len() && input[idx] != b'>' {
+                            idx += 1;
+                        }
+                        if idx < input.len() {
+                            idx += 1;
+                        }
+                    }
+                }
+                _ => {
+                    idx += 1;
+                    while idx < input.len() && is_ws(input[idx]) {
+                        idx += 1;
+                    }
+                    let name_start = idx;
+                    while idx < input.len() && is_ident(input[idx]) {
+                        idx += 1;
+                    }
+                    let name_len = idx - name_start;
+                    if name_len == 0 {
+                        break;
+                    }
+
+                    let attr_start = out_ref.attrs_len;
+                    let mut is_self_closing = false;
+                    loop {
+                        while idx < input.len() && is_ws(input[idx]) {
+                            idx += 1;
+                        }
+                        if idx >= input.len() {
+                            break;
+                        }
+                        match input[idx] {
+                            b'/' => {
+                                is_self_closing = true;
+                                idx += 1;
+                                while idx < input.len() && is_ws(input[idx]) {
+                                    idx += 1;
+                                }
+                            }
+                            b'>' => {
+                                idx += 1;
+                                break;
+                            }
+                            _ => {
+                                let Some(attr) = parse_attr_at(input, idx) else {
+                                    idx += 1;
+                                    continue;
+                                };
+                                if out_ref.attrs_len >= out_ref.attrs_cap {
+                                    out_ref.error = 2;
+                                    return 2;
+                                }
+                                let key = &input[attr.name_start..attr.name_start + attr.name_len];
+                                let key_kind = match key {
+                                    b"id" => 1,
+                                    b"class" => 2,
+                                    _ => 0,
+                                };
+                                let record = AsmAttrRecord {
+                                    name_start: attr.name_start as u32,
+                                    name_len: attr.name_len as u32,
+                                    value_start: attr.value_start as u32,
+                                    value_len: attr.value_len as u32,
+                                    has_value: attr.has_value,
+                                    key_kind,
+                                };
+                                unsafe {
+                                    out_ref.attrs_ptr.add(out_ref.attrs_len).write(record);
+                                }
+                                out_ref.attrs_len += 1;
+
+                                idx = attr.next_idx;
+                                if attr.has_value != 0
+                                    && idx < input.len()
+                                    && input[idx] != b'/'
+                                    && input[idx] != b'>'
+                                {
+                                    idx += 1;
+                                }
+                            }
+                        }
+                    }
+
+                    let attr_count = out_ref.attrs_len - attr_start;
+                    let emitted = unsafe {
+                        emit_node(
+                            out,
+                            &mut stack,
+                            2,
+                            markup_start,
+                            idx - markup_start,
+                            name_start,
+                            name_len,
+                            attr_start,
+                            attr_count,
+                        )
+                    };
+                    let node_idx = match emitted {
+                        Ok(node_idx) => node_idx,
+                        Err(status) => {
+                            out_ref.error = status;
+                            return status;
+                        }
+                    };
+
+                    let name = &input[name_start..name_start + name_len];
+                    if !is_self_closing && !is_void_tag_bytes(name) {
+                        if stack.len() >= out_ref.stack_cap {
+                            out_ref.error = 4;
+                            return 4;
+                        }
+                        stack.push(node_idx);
+                        out_ref.stack_len = stack.len();
+                    }
+                }
+            }
+        }
+
+        0
+    }
 }

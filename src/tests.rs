@@ -401,6 +401,45 @@ mod asm_core_helpers {
     }
 
     #[test]
+    fn mutable_output_helpers() {
+        assert_eq!(crate::asm_core::scan_html_event(b"abc<div>", 0), (1, 0, 3));
+        assert_eq!(crate::asm_core::scan_html_event(b"abc<div>", 3).0, 2);
+
+        assert_eq!(
+            crate::asm_core::next_ascii_token(b" one\ttwo\r\nthree", 0),
+            Some((1, 3, 4))
+        );
+        assert_eq!(
+            crate::asm_core::next_ascii_token(b" one\ttwo\r\nthree", 4),
+            Some((5, 3, 8))
+        );
+
+        let attr = crate::asm_core::parse_attr(br#"id="main" disabled"#, 0).unwrap();
+        assert_eq!((attr.name_start, attr.name_len), (0, 2));
+        assert_eq!((attr.value_start, attr.value_len), (4, 4));
+        assert_eq!(attr.next_idx, 8);
+        assert_eq!(attr.has_value, 1);
+
+        let attr = crate::asm_core::parse_attr(br#"id="main" disabled"#, 10).unwrap();
+        assert_eq!((attr.name_start, attr.name_len), (10, 8));
+        assert_eq!(attr.has_value, 0);
+
+        assert_eq!(crate::asm_core::simple_selector_kind(b"div#app"), (5, 3));
+        assert_eq!(crate::asm_core::simple_selector_kind(b".card"), (4, 0));
+    }
+
+    #[test]
+    fn assembly_document_counts() {
+        assert_eq!(
+            crate::__asm_scan_document_counts(
+                r#"text<div id="main" class="one two"><span>ok</span></div><!--x-->"#
+            )
+            .unwrap(),
+            (5, 2, 3)
+        );
+    }
+
+    #[test]
     #[rustfmt::skip]
     fn search_non_ident() {
         assert_eq!(crate::asm_core::search_non_ident(b"this-is-a-very-long-identifier<"), Some(30));
