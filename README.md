@@ -14,7 +14,7 @@ Supported assembly targets:
 Add it to your `Cargo.toml`:
 
 ```toml
-asm_tl = "0.1"
+asm_tl = "0.2"
 ```
 
 ## Usage
