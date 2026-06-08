@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 #[cfg(not(all(target_arch = "x86_64", target_os = "linux")))]
-compile_error!("rustedbytes-tl assembly core currently supports only x86_64 Linux");
+compile_error!("asm-tl assembly core currently supports only x86_64 Linux");
 
 unsafe extern "C" {
     fn rbtl_asm_search_non_ident(ptr: *const u8, len: usize) -> usize;
