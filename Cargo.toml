@@ -26,7 +26,7 @@ memchr = "2.8"
 cc = "1"
 
 [dev-dependencies]
-criterion = { version = "0.3", features = ["html_reports"] }
+criterion = { version = "0.8", features = ["html_reports"] }
 rustedbytes_tl_baseline = { package = "rustedbytes-tl", version = "0.2.0", features = ["std"] }
 
 [[bench]]
