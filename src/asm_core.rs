@@ -2,9 +2,12 @@
 
 #[cfg(not(any(
     all(target_arch = "x86_64", target_os = "linux"),
+    all(target_arch = "aarch64", target_os = "linux"),
     all(target_arch = "x86_64", target_os = "windows", target_env = "msvc")
 )))]
-compile_error!("asm-tl assembly core currently supports only x86_64 Linux and x86_64 Windows MSVC");
+compile_error!(
+    "asm-tl assembly core currently supports x86_64 Linux, aarch64 Linux, and x86_64 Windows MSVC"
+);
 
 unsafe extern "C" {
     fn rbtl_asm_search_non_ident(ptr: *const u8, len: usize) -> usize;
@@ -436,8 +439,11 @@ pub(crate) fn simple_selector_kind(input: &[u8]) -> (u32, usize) {
     (kind, tag_len)
 }
 
-#[cfg(all(target_arch = "x86_64", target_os = "windows", target_env = "msvc"))]
-mod msvc_helpers {
+#[cfg(any(
+    all(target_arch = "aarch64", target_os = "linux"),
+    all(target_arch = "x86_64", target_os = "windows", target_env = "msvc")
+))]
+mod asm_helpers {
     use super::{AsmAttr, AsmAttrRecord, AsmNodeRecord, AsmParseOutput};
 
     #[inline]
@@ -610,7 +616,7 @@ mod msvc_helpers {
     }
 
     #[unsafe(no_mangle)]
-    pub unsafe extern "C" fn rbtl_rust_msvc_parse_attr(
+    pub unsafe extern "C" fn rbtl_rust_asm_parse_attr(
         ptr: *const u8,
         len: usize,
         idx: usize,
@@ -630,7 +636,7 @@ mod msvc_helpers {
     }
 
     #[unsafe(no_mangle)]
-    pub unsafe extern "C" fn rbtl_rust_msvc_parse_document(
+    pub unsafe extern "C" fn rbtl_rust_asm_parse_document(
         ptr: *const u8,
         len: usize,
         out: *mut AsmParseOutput,
@@ -876,5 +882,26 @@ mod msvc_helpers {
         }
 
         0
+    }
+
+    #[cfg(all(target_arch = "x86_64", target_os = "windows", target_env = "msvc"))]
+    #[unsafe(no_mangle)]
+    pub unsafe extern "C" fn rbtl_rust_msvc_parse_attr(
+        ptr: *const u8,
+        len: usize,
+        idx: usize,
+        out: *mut AsmAttr,
+    ) -> u32 {
+        unsafe { rbtl_rust_asm_parse_attr(ptr, len, idx, out) }
+    }
+
+    #[cfg(all(target_arch = "x86_64", target_os = "windows", target_env = "msvc"))]
+    #[unsafe(no_mangle)]
+    pub unsafe extern "C" fn rbtl_rust_msvc_parse_document(
+        ptr: *const u8,
+        len: usize,
+        out: *mut AsmParseOutput,
+    ) -> u32 {
+        unsafe { rbtl_rust_asm_parse_document(ptr, len, out) }
     }
 }

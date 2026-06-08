@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main, master]
+  pull_request:
 
 env:
   CARGO_TERM_COLOR: always
@@ -37,3 +38,30 @@ jobs:
 
       - name: Test internals feature
         run: cargo test --features __INTERNALS_DO_NOT_USE
+
+  test-aarch64-linux:
+    name: Test build (aarch64-unknown-linux-gnu)
+    runs-on: ubuntu-latest
+
+    env:
+      CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
+      CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+      RUSTFLAGS: ""
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-gnu
+
+      - name: Install AArch64 toolchain
+        run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Check ARM64 test build
+        run: cargo test --target aarch64-unknown-linux-gnu --no-run
+
+      - name: Check ARM64 internals feature test build
+        run: cargo test --target aarch64-unknown-linux-gnu --features __INTERNALS_DO_NOT_USE --no-run
