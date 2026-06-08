@@ -36,12 +36,6 @@ let options = asm_tl::ParserOptions::default()
     .track_ids()
     .track_classes();
 ```
-
-## Features
-
-- `__INTERNALS_DO_NOT_USE`: exposes internal modules for fuzzing and
-  benchmarking.
-
 ## Provenance
 
 This crate is a fork of [`rustedbytes-tl`](https://github.com/RustedBytes/rustedbytes-tl),
@@ -49,4 +43,4 @@ modified to add parsing in Assembly and other improvements.
 
 ## License
 
-This project is licensed under the MIT license.
+MIT.
