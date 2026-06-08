@@ -8,6 +8,7 @@ Supported assembly targets:
 
 - `x86_64-unknown-linux-*`
 - `aarch64-unknown-linux-*`
+- `riscv64gc-unknown-linux-*`
 - `x86_64-pc-windows-msvc`
 
 Add it to your `Cargo.toml`:

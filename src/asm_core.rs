@@ -3,10 +3,11 @@
 #[cfg(not(any(
     all(target_arch = "x86_64", target_os = "linux"),
     all(target_arch = "aarch64", target_os = "linux"),
+    all(target_arch = "riscv64", target_os = "linux"),
     all(target_arch = "x86_64", target_os = "windows", target_env = "msvc")
 )))]
 compile_error!(
-    "asm-tl assembly core currently supports x86_64 Linux, aarch64 Linux, and x86_64 Windows MSVC"
+    "asm-tl assembly core currently supports x86_64 Linux, aarch64 Linux, riscv64 Linux, and x86_64 Windows MSVC"
 );
 
 unsafe extern "C" {
@@ -441,6 +442,7 @@ pub(crate) fn simple_selector_kind(input: &[u8]) -> (u32, usize) {
 
 #[cfg(any(
     all(target_arch = "aarch64", target_os = "linux"),
+    all(target_arch = "riscv64", target_os = "linux"),
     all(target_arch = "x86_64", target_os = "windows", target_env = "msvc")
 ))]
 mod asm_helpers {
